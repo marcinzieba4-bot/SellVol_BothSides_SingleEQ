@@ -241,21 +241,18 @@ def simulate_stock(
     premiums: dict,
 ) -> pd.DataFrame:
     """
-    One-sided vol-selling strategy with cumulative-loss recovery sizing.
+    PUT-only vol-selling strategy with cumulative-loss recovery sizing.
 
-    Each month sells ONE leg chosen by the PREVIOUS candle:
-      prev UP   → sell PUT   prev DOWN → sell CALL
+    Trade rule:
+      Previous candle UP   → sell PUT this month (stock rose, direction favour)
+      Previous candle DOWN → SKIP this month, hold flat, wait for up candle
 
-    Sizing rule (true cumulative martingale):
-      cumulated_loss = running total PnL deficit of the current episode.
-      Every trade outcome (win or loss) adjusts cumulated_loss.
+    Sizing rule (true cumulative martingale, puts only):
+      cumulated_loss = total PnL deficit of the current episode.
       size = ceil(cumulated_loss / premium)
-        → if this month wins at full premium, it exactly wipes the deficit.
-      When cumulated_loss reaches 0 (episode recovered), reset size to 1.
-
-    Because recovery-trade losses also compound into cumulated_loss, the size
-    is always sized to recover the TOTAL deficit in one good month.
-    MAX_SIZE caps runaway sizes.
+        → if this month collects full premium, it exactly clears the deficit.
+      When cumulated_loss reaches 0 (episode recovered), reset to size=1.
+      MAX_SIZE caps runaway sizes.
     """
     prices = prices.dropna()
     if len(prices) < 3:
@@ -264,44 +261,54 @@ def simulate_stock(
     returns = prices.pct_change().dropna()
     n       = len(returns)
 
-    records        = []
-    total_pnl      = 0.0
-    episode_pnl    = 0.0   # running sum of month_pnl in current episode (fractions)
-    sell_put       = True  # default: first trade sells a put (prior candle assumed UP)
+    records     = []
+    total_pnl   = 0.0
+    episode_pnl = 0.0   # running episode deficit (fractions, put-only)
+    prev_up     = True  # assume prior candle was UP → first month trades
 
     for i in range(n):
         r     = float(returns.iloc[i])
         date  = returns.index[i]
         month = pd.Period(date, "M")
 
-        side = "put" if sell_put else "call"
-        prem = get_premium(premiums, ticker, month, side)
-
-        # ── Cumulated loss = deficit still owed from this episode ─────────────
         cumulated_loss = max(0.0, -episode_pnl)
         in_recovery    = cumulated_loss > 0.0
 
-        # ── Size: enough units so one premium-winning month covers the deficit ─
+        if not prev_up:
+            # ── SKIP: previous candle was DOWN, wait for an up candle ─────────
+            records.append({
+                "date":                date,
+                "selling":             "skip",
+                "prem_pct":            0.0,
+                "size":                0,
+                "return_pct":          round(r * 100, 4),
+                "pnl_pu_pct":          0.0,
+                "month_pnl_pct":       0.0,
+                "cumulated_loss_pct":  round(cumulated_loss * 100, 4),
+                "episode_cum_pnl_pct": round(episode_pnl    * 100, 4),
+                "total_cum_pnl_pct":   round(total_pnl      * 100, 4),
+                "in_recovery":         in_recovery,
+                "max_size_hit":        False,
+            })
+            prev_up = (r >= 0.0)
+            continue
+
+        # ── TRADE: previous candle was UP → sell PUT ──────────────────────────
+        prem    = get_premium(premiums, ticker, month, "put")
         size    = _calc_size(cumulated_loss, prem)
         max_hit = size >= MAX_SIZE
 
-        # ── PnL this month ────────────────────────────────────────────────────
-        if sell_put:
-            pnl_pu = prem + min(r, 0.0)
-        else:
-            pnl_pu = prem - max(r, 0.0)
-
-        month_pnl    = size * pnl_pu
+        pnl_pu    = prem + min(r, 0.0)
+        month_pnl = size * pnl_pu
         episode_pnl += month_pnl
         total_pnl   += month_pnl
 
-        # Reset episode when deficit is cleared
         if episode_pnl >= 0.0:
             episode_pnl = 0.0
 
         records.append({
             "date":                date,
-            "selling":             side,
+            "selling":             "put",
             "prem_pct":            round(prem            * 100, 4),
             "size":                size,
             "return_pct":          round(r                * 100, 4),
@@ -315,7 +322,7 @@ def simulate_stock(
         })
 
         # ── Next month direction ──────────────────────────────────────────────
-        sell_put = (r >= 0.0)
+        prev_up = (r >= 0.0)
 
     return pd.DataFrame(records)
 
@@ -596,8 +603,8 @@ def print_summary(summary: pd.DataFrame, portfolio_df: pd.DataFrame) -> None:
     print(f"  Backtest period    : {START_DATE}  →  {END_DATE}")
     print(f"  Universe           : top {TOP_N} SPX single equities")
     print(f"  Capital model      : 1/100 per stock; recovery trades multiply that stock's capital")
-    print(f"  Sizing rule        : UP candle → sell PUT | DOWN → sell CALL")
-    print(f"  Recovery sizing    : ceil(last_base_ITM_loss / premium); anti-blowup")
+    print(f"  Sizing rule        : UP candle → sell PUT | DOWN → SKIP (wait)")
+    print(f"  Recovery sizing    : ceil(cumulated_loss / premium); reset when deficit cleared")
     print("=" * 72)
     print(f"\nPORTFOLIO (1/100 capital per stock)")
     print(f"  Final cum return   : {port['final_cum_pnl_pct']:>8.2f} %")
