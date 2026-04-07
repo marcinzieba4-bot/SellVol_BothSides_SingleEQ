@@ -1,0 +1,4 @@
+# Generated output files
+*.csv
+__pycache__/
+*.pyc
