@@ -337,7 +337,15 @@ def run_portfolio(
     premiums: dict,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """
-    Simulate strategy for every ticker; aggregate equally-weighted portfolio PnL.
+    Simulate strategy for every ticker.
+
+    Portfolio model:
+      • Each stock receives 1/100 of total capital at base (size=1).
+      • In recovery, that stock's capital multiplies by its size.
+      • Monthly portfolio return = sum(size_i × pnl_pu_i) / 100   [in %]
+      • Capital deployed        = sum(size_i) / 100               [leverage ratio]
+
+    Returns (stock_results dict, portfolio_df with monthly summary).
     """
     stock_results: dict[str, pd.DataFrame] = {}
 
@@ -349,18 +357,142 @@ def run_portfolio(
     if not stock_results:
         raise RuntimeError("No valid stock simulations produced.")
 
-    # Build equal-weight portfolio monthly PnL (average across stocks each month)
-    monthly_pnl_list = []
+    # Aggregate across stocks per calendar month
+    monthly_buckets: dict = {}   # date → accumulators
+
     for ticker, df in stock_results.items():
-        s = df.set_index("date")["month_pnl_pct"].rename(ticker)
-        monthly_pnl_list.append(s)
+        for _, row in df.iterrows():
+            date = row["date"]
+            b = monthly_buckets.setdefault(
+                date,
+                {"ret_sum": 0.0, "size_sum": 0, "n_stocks": 0, "n_recovery": 0},
+            )
+            b["ret_sum"]    += float(row["size"]) * float(row["pnl_pu_pct"]) / 100.0
+            b["size_sum"]   += int(row["size"])
+            b["n_stocks"]   += 1
+            if bool(row["in_recovery"]):
+                b["n_recovery"] += 1
 
-    pnl_wide    = pd.concat(monthly_pnl_list, axis=1)
-    port_monthly = pnl_wide.mean(axis=1).rename("portfolio_month_pnl_pct")
-    port_cumul   = port_monthly.cumsum().rename("portfolio_cum_pnl_pct")
-    portfolio_df = pd.concat([port_monthly, port_cumul], axis=1).reset_index()
+    rows = []
+    cum_return = 0.0
+    for date in sorted(monthly_buckets.keys()):
+        b = monthly_buckets[date]
+        monthly_ret = b["ret_sum"]   # already divided by 100 (portfolio %)
+        cum_return += monthly_ret
+        rows.append({
+            "date":                    date,
+            "monthly_return_pct":      round(monthly_ret,            4),
+            "cumulative_return_pct":   round(cum_return,             4),
+            "capital_deployed":        round(b["size_sum"] / 100.0,  2),
+            "num_stocks":              b["n_stocks"],
+            "num_stocks_in_recovery":  b["n_recovery"],
+        })
 
+    portfolio_df = pd.DataFrame(rows)
     return stock_results, portfolio_df
+
+
+# ── Trade History ──────────────────────────────────────────────────────────────
+
+def save_history_csv(stock_results: dict[str, pd.DataFrame]) -> None:
+    """
+    Save one row per (date, ticker) trade to history.csv.
+
+    Columns:
+      date, ticker, selling_side, prem_pct, size,
+      capital_allocated_pct  (= size × 1%  of portfolio),
+      return_pct, pnl_pu_pct,
+      pnl_contribution_pct   (= size × pnl_pu / 100),
+      in_recovery
+    """
+    rows = []
+    for ticker, df in stock_results.items():
+        for _, row in df.iterrows():
+            sz  = int(row["size"])
+            ppu = float(row["pnl_pu_pct"])
+            rows.append({
+                "date":                   row["date"],
+                "ticker":                 ticker,
+                "selling_side":           row["selling"],
+                "prem_pct":               row["prem_pct"],
+                "size":                   sz,
+                "capital_allocated_pct":  sz,          # each unit = 1% of portfolio
+                "return_pct":             row["return_pct"],
+                "pnl_pu_pct":             ppu,
+                "pnl_contribution_pct":   round(sz * ppu / 100.0, 6),
+                "in_recovery":            bool(row["in_recovery"]),
+            })
+
+    history = (
+        pd.DataFrame(rows)
+        .sort_values(["date", "ticker"])
+        .reset_index(drop=True)
+    )
+    history.to_csv("history.csv", index=False)
+    print(f"  history.csv written  ({len(history):,} rows)")
+
+
+# ── Risk Statistics ────────────────────────────────────────────────────────────
+
+def compute_risk_stats(
+    portfolio_df: pd.DataFrame,
+    rf_annual: float = 0.04,
+) -> dict:
+    """
+    Compute standard risk/return statistics on the monthly portfolio return series.
+
+    Returns a dict with annualised return, vol, Sharpe, Sortino, max drawdown,
+    Calmar, VaR 95/99%, CVaR 95%, win rate, best/worst month.
+    """
+    mr = portfolio_df["monthly_return_pct"].values / 100.0   # fractions
+
+    n            = len(mr)
+    mean_mo      = np.mean(mr)
+    std_mo       = np.std(mr, ddof=1) if n > 1 else 0.0
+    ann_ret      = mean_mo  * 12
+    ann_vol      = std_mo   * np.sqrt(12)
+    rf_mo        = rf_annual / 12
+
+    # Sharpe (vs 4% RFR)
+    sharpe = (ann_ret - rf_annual) / ann_vol if ann_vol > 0 else 0.0
+
+    # Sortino: downside vol uses returns below monthly RFR
+    down = mr[mr < rf_mo]
+    down_vol = np.std(down, ddof=1) * np.sqrt(12) if len(down) > 1 else 0.0
+    sortino  = (ann_ret - rf_annual) / down_vol if down_vol > 0 else 0.0
+
+    # Max drawdown on cumulative return (simple sum, not compounded)
+    cum = np.cumsum(mr)
+    peak = np.maximum.accumulate(cum)
+    max_dd = float((cum - peak).min())
+
+    # Calmar
+    calmar = ann_ret / abs(max_dd) if max_dd != 0 else 0.0
+
+    # VaR / CVaR
+    var95  = float(np.percentile(mr, 5))
+    var99  = float(np.percentile(mr, 1))
+    tail95 = mr[mr <= var95]
+    cvar95 = float(tail95.mean()) if len(tail95) > 0 else var95
+
+    win_rate = float((mr > 0).mean() * 100)
+
+    return {
+        "n_months":               n,
+        "ann_return_pct":         round(ann_ret   * 100, 2),
+        "ann_vol_pct":            round(ann_vol   * 100, 2),
+        "sharpe_4pct_rf":         round(sharpe,          3),
+        "sortino_4pct_rf":        round(sortino,         3),
+        "max_drawdown_pct":       round(max_dd    * 100, 2),
+        "calmar":                 round(calmar,          3),
+        "var_95_pct":             round(var95     * 100, 2),
+        "var_99_pct":             round(var99     * 100, 2),
+        "cvar_95_pct":            round(cvar95    * 100, 2),
+        "win_rate_pct":           round(win_rate,        1),
+        "best_month_pct":         round(float(mr.max()) * 100, 2),
+        "worst_month_pct":        round(float(mr.min()) * 100, 2),
+        "avg_monthly_return_pct": round(mean_mo   * 100, 4),
+    }
 
 
 # ── Summary Statistics ─────────────────────────────────────────────────────────
@@ -399,16 +531,16 @@ def compute_summary(stock_results: dict[str, pd.DataFrame], portfolio_df: pd.Dat
 
     # Add portfolio row
     port_row = {
-        "ticker":             "PORTFOLIO (equal-weight)",
+        "ticker":             "PORTFOLIO (1/100 capital)",
         "months":             len(portfolio_df),
-        "total_pnl_pct":      round(portfolio_df["portfolio_month_pnl_pct"].sum(), 2),
-        "final_cum_pnl_pct":  round(portfolio_df["portfolio_cum_pnl_pct"].iloc[-1], 2),
-        "avg_monthly_pnl_pct":round(portfolio_df["portfolio_month_pnl_pct"].mean(), 4),
+        "total_pnl_pct":      round(portfolio_df["monthly_return_pct"].sum(), 2),
+        "final_cum_pnl_pct":  round(portfolio_df["cumulative_return_pct"].iloc[-1], 2),
+        "avg_monthly_pnl_pct":round(portfolio_df["monthly_return_pct"].mean(), 4),
         "avg_prem_pct":       "–",
-        "win_rate_pct":       round((portfolio_df["portfolio_month_pnl_pct"] > 0).mean() * 100, 1),
+        "win_rate_pct":       round((portfolio_df["monthly_return_pct"] > 0).mean() * 100, 1),
         "max_drawdown_pct":   round(
-            (portfolio_df["portfolio_cum_pnl_pct"] -
-             portfolio_df["portfolio_cum_pnl_pct"].cummax()).min(), 2),
+            (portfolio_df["cumulative_return_pct"] -
+             portfolio_df["cumulative_return_pct"].cummax()).min(), 2),
         "max_size":           "–",
         "max_size_hit":       "–",
         "pct_months_recovery":"–",
@@ -420,7 +552,52 @@ def compute_summary(stock_results: dict[str, pd.DataFrame], portfolio_df: pd.Dat
 
 # ── Reporting ──────────────────────────────────────────────────────────────────
 
-def print_summary(summary: pd.DataFrame) -> None:
+def print_monthly_table(portfolio_df: pd.DataFrame) -> None:
+    """Print the month-by-month portfolio return table."""
+    print("\n" + "=" * 80)
+    print("  MONTHLY PORTFOLIO RETURNS")
+    print("=" * 80)
+    hdr = (
+        f"{'Month':<10}  {'Return%':>8}  {'Cum%':>8}  "
+        f"{'CapDeploy':>9}  {'Stocks':>6}  {'InRecov':>7}"
+    )
+    print(hdr)
+    print("-" * 80)
+    for _, row in portfolio_df.iterrows():
+        date_str = row["date"].strftime("%Y-%m") if hasattr(row["date"], "strftime") else str(row["date"])[:7]
+        print(
+            f"{date_str:<10}  {row['monthly_return_pct']:>8.3f}  "
+            f"{row['cumulative_return_pct']:>8.3f}  "
+            f"{row['capital_deployed']:>9.2f}  "
+            f"{row['num_stocks']:>6}  "
+            f"{row['num_stocks_in_recovery']:>7}"
+        )
+    print("=" * 80)
+
+
+def print_risk_stats(stats: dict) -> None:
+    """Print the risk statistics block."""
+    print("\n" + "=" * 50)
+    print("  RISK STATISTICS  (portfolio, 1/100 per stock)")
+    print("=" * 50)
+    print(f"  Months               : {stats['n_months']}")
+    print(f"  Annualised return    : {stats['ann_return_pct']:>8.2f} %")
+    print(f"  Annualised vol       : {stats['ann_vol_pct']:>8.2f} %")
+    print(f"  Sharpe (4% RF)       : {stats['sharpe_4pct_rf']:>8.3f}")
+    print(f"  Sortino (4% RF)      : {stats['sortino_4pct_rf']:>8.3f}")
+    print(f"  Max drawdown         : {stats['max_drawdown_pct']:>8.2f} %")
+    print(f"  Calmar               : {stats['calmar']:>8.3f}")
+    print(f"  VaR 95%              : {stats['var_95_pct']:>8.2f} %")
+    print(f"  VaR 99%              : {stats['var_99_pct']:>8.2f} %")
+    print(f"  CVaR 95%             : {stats['cvar_95_pct']:>8.2f} %")
+    print(f"  Win rate             : {stats['win_rate_pct']:>8.1f} %")
+    print(f"  Best month           : {stats['best_month_pct']:>8.2f} %")
+    print(f"  Worst month          : {stats['worst_month_pct']:>8.2f} %")
+    print(f"  Avg monthly return   : {stats['avg_monthly_return_pct']:>8.4f} %")
+    print("=" * 50)
+
+
+def print_summary(summary: pd.DataFrame, portfolio_df: pd.DataFrame) -> None:
     port = summary.iloc[0]
     print("\n" + "=" * 72)
     print("  SPX SINGLE-EQUITY VOL SELLING STRATEGY  —  SIMULATION RESULTS")
@@ -428,31 +605,33 @@ def print_summary(summary: pd.DataFrame) -> None:
     print(f"  Premium source     : S3 real ATM options data (fallback {FALLBACK_PREMIUM*100:.1f}%)")
     print(f"  Backtest period    : {START_DATE}  →  {END_DATE}")
     print(f"  Universe           : top {TOP_N} SPX single equities")
-    print(f"  Sizing rule        : UP candle → bigger PUT size | DOWN → bigger CALL")
-    print(f"  Recovery sizing    : ceil(ITM_gross_loss / next_side_premium)")
+    print(f"  Capital model      : 1/100 per stock; recovery trades multiply that stock's capital")
+    print(f"  Sizing rule        : UP candle → sell PUT | DOWN → sell CALL")
+    print(f"  Recovery sizing    : ceil(last_base_ITM_loss / premium); anti-blowup")
     print("=" * 72)
-    print(f"\n{'PORTFOLIO (equal-weight avg across stocks)':}")
-    print(f"  Total PnL          : {port['total_pnl_pct']:>8.2f} %")
-    print(f"  Final Cum PnL      : {port['final_cum_pnl_pct']:>8.2f} %")
-    print(f"  Avg monthly PnL    : {port['avg_monthly_pnl_pct']:>8.4f} %")
+    print(f"\nPORTFOLIO (1/100 capital per stock)")
+    print(f"  Final cum return   : {port['final_cum_pnl_pct']:>8.2f} %")
+    print(f"  Avg monthly return : {port['avg_monthly_pnl_pct']:>8.4f} %")
     print(f"  Win rate           : {port['win_rate_pct']:>8.1f} %")
     print(f"  Max drawdown       : {port['max_drawdown_pct']:>8.2f} %")
+    max_cap = portfolio_df["capital_deployed"].max()
+    print(f"  Max capital deploy : {max_cap:>8.2f}x  (leverage vs. base 1.0×)")
     print()
-    print(f"{'TOP 10 STOCKS (by total PnL)':}")
+    print("TOP 10 STOCKS (by total PnL % contribution to portfolio)")
     cols = ["ticker", "total_pnl_pct", "avg_monthly_pnl_pct", "avg_prem_pct",
             "win_rate_pct", "max_drawdown_pct", "max_size", "pct_months_recovery"]
-    stocks = summary[summary["ticker"] != "PORTFOLIO (equal-weight)"]
+    stocks = summary[summary["ticker"] != "PORTFOLIO (1/100 capital)"]
     top10  = stocks.head(10)
     print(top10[cols].to_string(index=False))
     print()
-    print(f"{'BOTTOM 10 STOCKS (by total PnL)':}")
+    print("BOTTOM 10 STOCKS (by total PnL % contribution to portfolio)")
     bot10 = stocks.tail(10)
     print(bot10[cols].to_string(index=False))
 
     # Stocks that hit the max-size cap
     capped = summary[summary["max_size_hit"] == True]
     if not capped.empty:
-        print(f"\n⚠  {len(capped)} stock(s) hit the MAX_SIZE={MAX_SIZE} cap:")
+        print(f"\n  {len(capped)} stock(s) hit the MAX_SIZE={MAX_SIZE} cap:")
         print("  " + ", ".join(capped["ticker"].tolist()))
     print("=" * 72)
 
@@ -560,22 +739,24 @@ def main() -> None:
     # 3. Summary statistics
     summary = compute_summary(stock_results, portfolio_df)
 
-    # 4. Print report
-    print_summary(summary)
+    # 4. Risk statistics
+    risk_stats = compute_risk_stats(portfolio_df)
 
-    # 5. Save outputs
+    # 5. Print reports
+    print_summary(summary, portfolio_df)
+    print_monthly_table(portfolio_df)
+    print_risk_stats(risk_stats)
+
+    # 6. Save outputs
+    print("\nSaving outputs …")
     summary.to_csv("summary.csv", index=False)
     portfolio_df.to_csv("portfolio_pnl.csv", index=False)
-
-    # Save per-stock detailed logs
-    for ticker, df in stock_results.items():
-        safe = ticker.replace("-", "_")
-        df.to_csv(f"stock_{safe}.csv", index=False)
+    save_history_csv(stock_results)
 
     print(f"\nOutputs written:")
     print("  summary.csv        — per-stock + portfolio summary statistics")
-    print("  portfolio_pnl.csv  — monthly portfolio PnL time series")
-    print("  stock_<TICKER>.csv — detailed monthly trade log per stock")
+    print("  portfolio_pnl.csv  — monthly portfolio return series")
+    print("  history.csv        — full trade history (one row per stock × month)")
 
 
 if __name__ == "__main__":
