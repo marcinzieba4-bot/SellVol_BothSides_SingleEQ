@@ -31,20 +31,67 @@ PnL model (simplified, per unit, in % of stock price):
   where r = monthly return of the stock
 """
 
+import io
 import sys
 import warnings
 import numpy as np
 import pandas as pd
 import yfinance as yf
+import boto3
 
 warnings.filterwarnings("ignore")
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-PREMIUM      = 0.03          # 3 % flat premium per unit per month
-START_DATE   = "2015-01-01"
-END_DATE     = "2024-12-31"
-TOP_N        = 100
-MAX_SIZE     = 5_000         # safety cap on position size (units)
+FALLBACK_PREMIUM = 0.03      # fallback if no S3 data available for a month
+START_DATE       = "2015-01-01"
+END_DATE         = "2024-12-31"
+TOP_N            = 100
+MAX_SIZE         = 5_000     # safety cap on position size (units)
+
+import os
+AWS_KEY    = os.environ["AWS_ACCESS_KEY_ID"]
+AWS_SECRET = os.environ["AWS_SECRET_ACCESS_KEY"]
+S3_BUCKET  = os.environ.get("S3_BUCKET", "s3bucketmz")
+S3_PUT     = "optionsData"       # put premiums
+S3_CALL    = "optionsDataCall"   # call premiums
+
+# ── Sector-based proxy: for tickers without S3 data use closest available ─────
+# Proxy ticker must be present in the S3 dataset (42 tickers).
+PROXY_MAP = {
+    # Semiconductors / hardware
+    "AMD":    "NVDA",  "MU":    "NVDA",  "AMAT":  "AVGO",
+    "KLAC":   "AVGO",  "LRCX":  "AVGO",  "TXN":   "AVGO",
+    "ADI":    "AVGO",  "QCOM":  "QCOM",  "APH":   "AVGO",
+    # Large-cap tech / software
+    "ADBE":   "MSFT",  "ADP":   "IBM",   "CSCO":  "IBM",
+    "PANW":   "CRM",   "FI":    "MA",
+    # Consumer / retail
+    "MCD":    "KO",    "NKE":   "NKE",   "LOW":   "HD",
+    "TJX":    "WMT",   "MDLZ":  "PEP",   "PM":    "PEP",
+    # Healthcare
+    "BMY":    "ABBV",  "AMGN":  "ABBV",  "GILD":  "ABBV",
+    "REGN":   "ABBV",  "VRTX":  "ABBV",  "ZTS":   "ABBV",
+    "BSX":    "ABT",   "DHR":   "ABT",   "ISRG":  "ABT",
+    "SYK":    "ABT",   "ELV":   "UNH",   "CI":    "UNH",
+    # Financials
+    "GS":     "JPM",   "MS":    "JPM",   "BLK":   "JPM",
+    "SCHW":   "JPM",   "AXP":   "MA",    "SPGI":  "JPM",
+    "MCO":    "JPM",   "CME":   "JPM",   "CB":    "JPM",
+    "PGR":    "JPM",
+    # Industrials / materials
+    "GE":     "SPY",   "CAT":   "SPY",   "HON":   "SPY",
+    "RTX":    "SPY",   "UNP":   "SPY",   "DE":    "SPY",
+    "ETN":    "SPY",   "EMR":   "SPY",   "ITW":   "SPY",
+    "LIN":    "SPY",   "SHW":   "SPY",   "ECL":   "PG",
+    "APH":    "SPY",
+    # Utilities / real estate
+    "NEE":    "KO",    "DUK":   "KO",    "SO":    "KO",
+    "CEG":    "XOM",   "PLD":   "SPY",
+    # Telecom / media
+    "T":      "CMCSA", "DIS":   "DIS",
+    # Other
+    "BRK-B":  "SPY",   "PYPL":  "MA",
+}
 
 # Top-100 S&P 500 names by approximate market cap (2024)
 TOP100_TICKERS = [
@@ -62,6 +109,111 @@ TOP100_TICKERS = [
     "SHW",  "CME",  "MCO",  "CEG",  "TJX",  "KLAC",  "EMR",  "APH",
     "FI",   "PYPL", "ITW",  "ECL",
 ]
+
+# ── S3 Premium Loading ─────────────────────────────────────────────────────────
+
+def _s3_history_key(prefix: str, ticker: str) -> str:
+    """Return the S3 key for a ticker's history_summary.csv (handles path quirks)."""
+    # Most tickers: prefix/TICKER/TICKER/TICKER_history_summary.csv
+    # Exception: ACN put has prefix/ACN/ACN_history_summary.csv
+    standard = f"{prefix}/{ticker}/{ticker}/{ticker}_history_summary.csv"
+    short    = f"{prefix}/{ticker}/{ticker}_history_summary.csv"
+    return standard, short
+
+
+def load_s3_premiums() -> dict[str, dict[str, dict]]:
+    """
+    Load all history_summary CSVs from S3.
+
+    Returns:
+      premiums[ticker]['put'][period]  = put  premium as fraction (e.g. 0.028)
+      premiums[ticker]['call'][period] = call premium as fraction
+      premiums[ticker]['put_avg']      = mean put  premium fraction
+      premiums[ticker]['call_avg']     = mean call premium fraction
+    where period is a pandas Period('M').
+    """
+    print("Loading real options premium data from S3 …")
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=AWS_KEY,
+        aws_secret_access_key=AWS_SECRET,
+        region_name="us-east-1",
+    )
+    paginator = s3.get_paginator("list_objects_v2")
+    premiums: dict[str, dict] = {}
+
+    for prefix, side in [(S3_PUT, "put"), (S3_CALL, "call")]:
+        count = 0
+        for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=f"{prefix}/"):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if not key.endswith("history_summary.csv"):
+                    continue
+                ticker = key.split("/")[1]
+                try:
+                    raw = s3.get_object(Bucket=S3_BUCKET, Key=key)
+                    df  = pd.read_csv(io.BytesIO(raw["Body"].read()))
+                    df["observation_date"] = pd.to_datetime(df["observation_date"])
+                    df["prem_frac"] = df["entry_premium"] / df["stock_price"]
+                    df["month"]     = df["observation_date"].dt.to_period("M")
+                    # One row per month (take last entry if duplicates)
+                    monthly = (
+                        df.sort_values("observation_date")
+                          .groupby("month")["prem_frac"]
+                          .last()
+                    )
+                    avg = df["prem_frac"].mean()
+                    rec = premiums.setdefault(ticker, {})
+                    rec[side]          = monthly.to_dict()
+                    rec[f"{side}_avg"] = avg
+                    count += 1
+                except Exception as e:
+                    print(f"  Warning: could not load {key}: {e}")
+        print(f"  {side:4s}: loaded {count} tickers")
+
+    print(f"  → {len(premiums)} tickers with S3 premium data")
+    return premiums
+
+
+def get_premium(
+    premiums: dict,
+    ticker: str,
+    month: "pd.Period",
+    side: str,          # 'put' or 'call'
+) -> float:
+    """
+    Return the ATM premium fraction for (ticker, month, side).
+
+    Look-up priority:
+      1. Exact ticker + month in S3
+      2. Exact ticker average (month outside S3 range)
+      3. Proxy ticker (same sector, in S3) — exact month then avg
+      4. Global fallback constant FALLBACK_PREMIUM
+    """
+    def _from_rec(rec, m):
+        if m in rec.get(side, {}):
+            return rec[side][m]
+        avg_key = f"{side}_avg"
+        if avg_key in rec:
+            return rec[avg_key]
+        return None
+
+    # 1 & 2: own ticker
+    if ticker in premiums:
+        v = _from_rec(premiums[ticker], month)
+        if v is not None:
+            return v
+
+    # 3: proxy
+    proxy = PROXY_MAP.get(ticker)
+    if proxy and proxy in premiums:
+        v = _from_rec(premiums[proxy], month)
+        if v is not None:
+            return v
+
+    # 4: fallback
+    return FALLBACK_PREMIUM
+
 
 # ── Data Fetching ──────────────────────────────────────────────────────────────
 
@@ -90,40 +242,44 @@ def fetch_monthly_prices(tickers: list[str], start: str, end: str) -> pd.DataFra
 
 # ── Strategy Simulation ────────────────────────────────────────────────────────
 
-def _next_sizes(r: float, itm_gross_loss: float) -> tuple[int, int]:
+def _next_sizes(
+    r: float,
+    itm_gross_loss: float,
+    recovery_premium: float,
+) -> tuple[int, int]:
     """
-    Compute (put_size, call_size) for the NEXT month based solely on
-    THIS month's gross loss from the ITM side.
+    Compute (put_size, call_size) for the NEXT month.
 
-    UP   candle → call may be ITM → size up PUTS  to recover call loss
-    DOWN candle → put  may be ITM → size up CALLS to recover put  loss
-    If neither side went ITM (|r| <= PREMIUM) → both stay at 1.
+    recovery_premium: the premium fraction of the side being sized up
+      (used so that the number of units is calibrated to the right premium).
 
-    Recovery size = ceil(ITM_gross_loss / PREMIUM), minimum 1.
+    Recovery size = ceil(ITM_gross_loss / recovery_premium), minimum 1.
     """
-    rec = max(1, int(np.ceil(itm_gross_loss / PREMIUM)))
-    rec = min(rec, MAX_SIZE)
-    if r >= 0.0:          # UP   → size PUTS, call = 1
+    denom = recovery_premium if recovery_premium > 0 else FALLBACK_PREMIUM
+    rec   = max(1, int(np.ceil(itm_gross_loss / denom)))
+    rec   = min(rec, MAX_SIZE)
+    if r >= 0.0:     # UP   → size PUTS (put premium drives sizing), call = 1
         return rec, 1
-    else:                 # DOWN → size CALLS, put = 1
+    else:            # DOWN → size CALLS (call premium drives sizing), put = 1
         return 1, rec
 
 
-def simulate_stock(ticker: str, prices: pd.Series) -> pd.DataFrame:
+def simulate_stock(
+    ticker: str,
+    prices: pd.Series,
+    premiums: dict,
+) -> pd.DataFrame:
     """
-    Simulate the vol-selling strategy for a single stock.
+    Simulate the vol-selling strategy for a single stock using real premiums.
 
-    Sizing rule (corrected):
-      • Sizing reacts to the PREVIOUS candle's ITM-side gross loss only —
-        no cross-month accumulation for sizing purposes.
-      • episode_cum_pnl tracks the running PnL of the current drawdown
-        (resets to 0 whenever it turns positive).
-      • total_cum_pnl accumulates the full backtest history.
+    premiums: output of load_s3_premiums() — per-month ATM premium fractions.
+    For months / tickers not in S3, falls back to per-ticker avg or FALLBACK_PREMIUM.
 
-    Columns returned per month:
-      date, return_pct, put_size, call_size, put_pnl_pct, call_pnl_pct,
-      itm_gross_loss_pct, month_pnl_pct, episode_cum_pnl_pct,
-      total_cum_pnl_pct, in_recovery, max_size_hit
+    PnL model per unit per month:
+      put_pnl_pu  = put_prem  + min(r, 0)
+      call_pnl_pu = call_prem - max(r, 0)
+
+    Sizing: size = ceil(ITM_gross_loss / next_side_premium)
     """
     prices = prices.dropna()
     if len(prices) < 3:
@@ -133,26 +289,30 @@ def simulate_stock(ticker: str, prices: pd.Series) -> pd.DataFrame:
     n       = len(returns)
 
     records     = []
-    episode_pnl = 0.0   # PnL of the current sized-up cycle; resets to 0
-    #                     whenever both sizes are 1 at the START of a month
-    #                     (i.e. we are at base / no recovery underway)
-    total_pnl   = 0.0   # full backtest running total, never resets
+    episode_pnl = 0.0
+    total_pnl   = 0.0
     put_size    = 1
     call_size   = 1
+    # We track which premium will be used for sizing next month's recovery side
+    next_put_prem  = FALLBACK_PREMIUM
+    next_call_prem = FALLBACK_PREMIUM
 
     for i in range(n):
         r    = float(returns.iloc[i])
         date = returns.index[i]
+        month = pd.Period(date, "M")
 
-        # ── Episode reset: back to base size means a fresh cycle ──────────────
-        # When both sides are 1 at the START of this month, the previous cycle
-        # (if any) has concluded. Start the episode counter fresh.
+        # ── Fetch real premiums for this month ────────────────────────────────
+        put_prem  = get_premium(premiums, ticker, month, "put")
+        call_prem = get_premium(premiums, ticker, month, "call")
+
+        # ── Episode reset at base size ────────────────────────────────────────
         if put_size == 1 and call_size == 1:
             episode_pnl = 0.0
 
-        # ── PnL this month (sizes set last month) ─────────────────────────────
-        put_pnl_pu  = PREMIUM + min(r, 0.0)   # per-unit put  PnL in % of S
-        call_pnl_pu = PREMIUM - max(r, 0.0)   # per-unit call PnL in % of S
+        # ── PnL this month ────────────────────────────────────────────────────
+        put_pnl_pu  = put_prem  + min(r, 0.0)
+        call_pnl_pu = call_prem - max(r, 0.0)
         put_pnl     = put_size  * put_pnl_pu
         call_pnl    = call_size * call_pnl_pu
         month_pnl   = put_pnl + call_pnl
@@ -160,19 +320,23 @@ def simulate_stock(ticker: str, prices: pd.Series) -> pd.DataFrame:
         episode_pnl += month_pnl
         total_pnl   += month_pnl
 
-        # ── Gross loss from THIS month's ITM side (drives NEXT month's size) ─
-        # put  goes ITM when r < -PREMIUM  (stock fell through strike)
-        # call goes ITM when r >  PREMIUM  (stock rose through strike)
+        # ── ITM gross loss from this month's losing side ──────────────────────
         if r >= 0.0:
-            itm_gross_loss = call_size * max(0.0,  r - PREMIUM)   # call ITM
+            itm_gross_loss = call_size * max(0.0, r - call_prem)   # call ITM
+            # Next month: size PUTS; use next month's put premium for sizing
+            # (best estimate = current month's put premium, same ticker)
+            recovery_prem  = put_prem
         else:
-            itm_gross_loss = put_size  * max(0.0, -r - PREMIUM)   # put  ITM
+            itm_gross_loss = put_size  * max(0.0, -r - put_prem)   # put  ITM
+            recovery_prem  = call_prem
 
         max_hit = (put_size >= MAX_SIZE or call_size >= MAX_SIZE)
 
         records.append({
             "date":               date,
             "return_pct":         round(r            * 100, 4),
+            "put_prem_pct":       round(put_prem      * 100, 4),
+            "call_prem_pct":      round(call_prem     * 100, 4),
             "put_size":           put_size,
             "call_size":          call_size,
             "put_pnl_pct":        round(put_pnl       * 100, 4),
@@ -185,22 +349,25 @@ def simulate_stock(ticker: str, prices: pd.Series) -> pd.DataFrame:
             "max_size_hit":       max_hit,
         })
 
-        # ── Next month's sizes: purely from this month's ITM loss ─────────────
-        put_size, call_size = _next_sizes(r, itm_gross_loss)
+        # ── Next month's sizes ────────────────────────────────────────────────
+        put_size, call_size = _next_sizes(r, itm_gross_loss, recovery_prem)
 
     return pd.DataFrame(records)
 
 
 # ── Portfolio Aggregation ──────────────────────────────────────────────────────
 
-def run_portfolio(closes: pd.DataFrame) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
+def run_portfolio(
+    closes: pd.DataFrame,
+    premiums: dict,
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """
     Simulate strategy for every ticker; aggregate equally-weighted portfolio PnL.
     """
     stock_results: dict[str, pd.DataFrame] = {}
 
     for ticker in closes.columns:
-        df = simulate_stock(ticker, closes[ticker])
+        df = simulate_stock(ticker, closes[ticker], premiums)
         if not df.empty:
             stock_results[ticker] = df
 
@@ -283,11 +450,11 @@ def print_summary(summary: pd.DataFrame) -> None:
     print("\n" + "=" * 72)
     print("  SPX SINGLE-EQUITY VOL SELLING STRATEGY  —  SIMULATION RESULTS")
     print("=" * 72)
-    print(f"  Premium assumption : {PREMIUM*100:.1f}% per month per unit (ATM options)")
+    print(f"  Premium source     : S3 real ATM options data (fallback {FALLBACK_PREMIUM*100:.1f}%)")
     print(f"  Backtest period    : {START_DATE}  →  {END_DATE}")
     print(f"  Universe           : top {TOP_N} SPX single equities")
     print(f"  Sizing rule        : UP candle → bigger PUT size | DOWN → bigger CALL")
-    print(f"  Recovery reset     : when cumulative PnL turns ≥ 0")
+    print(f"  Recovery sizing    : ceil(ITM_gross_loss / next_side_premium)")
     print("=" * 72)
     print(f"\n{'PORTFOLIO (equal-weight avg across stocks)':}")
     print(f"  Total PnL          : {port['total_pnl_pct']:>8.2f} %")
@@ -326,29 +493,17 @@ def print_summary(summary: pd.DataFrame) -> None:
 
 # ── Single-Stock Trace ─────────────────────────────────────────────────────────
 
-def trace_stock(ticker: str) -> None:
+def trace_stock(ticker: str, premiums: dict) -> None:
     """
-    Fetch data for one ticker and print a month-by-month sizing walk-through.
-
-    Columns:
-      Month   — calendar month of the candle
-      Ret%    — monthly return of the stock
-      Candle  — UP or DOWN
-      P_sz / C_sz — put / call sizes IN EFFECT this month (set last month)
-      Put PnL% / Call PnL% — actual PnL of each leg this month
-      ITM_loss% — gross loss from whichever side went ITM this month
-                  (this single number drives next month's recovery size)
-      Month%  — net PnL this month (both legs combined)
-      EpisodePnL% — running PnL of the current drawdown (resets to 0 when ≥ 0)
-      Next P_sz / C_sz — sizes set for next month
-      Reasoning — plain-English explanation
+    Fetch data for one ticker and print a month-by-month sizing walk-through
+    using real S3 premiums where available.
     """
-    print(f"\n{'='*100}")
-    print(f"  STEP-BY-STEP SIZING TRACE — {ticker}")
-    print(f"  Premium = {PREMIUM*100:.1f}% per unit | sizing = ceil(ITM_gross_loss / {PREMIUM*100:.0f}%)")
-    print(f"{'='*100}")
+    print(f"\n{'='*110}")
+    print(f"  STEP-BY-STEP SIZING TRACE — {ticker}  (real S3 premiums)")
+    print(f"{'='*110}")
     hdr = (
         f"{'Month':<10} {'Ret%':>7} {'Cndl':>4}  "
+        f"{'PutPrem%':>9} {'CallPrem%':>10}  "
         f"{'P_sz':>5} {'C_sz':>5}  "
         f"{'Put PnL%':>9} {'Call PnL%':>10}  "
         f"{'ITM_loss%':>10}  {'Month%':>7} {'EpisodePnL%':>12}  "
@@ -365,53 +520,57 @@ def trace_stock(ticker: str) -> None:
     prices  = close_col.dropna()
     returns = prices.pct_change().dropna()
 
-    episode_pnl  = 0.0
-    total_pnl    = 0.0
-    put_size     = 1
-    call_size    = 1
+    episode_pnl = 0.0
+    total_pnl   = 0.0
+    put_size    = 1
+    call_size   = 1
 
     for date, r in returns.items():
-        r = float(r)
+        r     = float(r)
         candle = "UP" if r >= 0 else "DN"
+        month  = pd.Period(date, "M")
 
-        # Episode resets to 0 when both sizes are at base (fresh cycle)
+        put_prem  = get_premium(premiums, ticker, month, "put")
+        call_prem = get_premium(premiums, ticker, month, "call")
+
         if put_size == 1 and call_size == 1:
             episode_pnl = 0.0
 
-        put_pnl_pu  = PREMIUM + min(r, 0.0)
-        call_pnl_pu = PREMIUM - max(r, 0.0)
+        put_pnl_pu  = put_prem  + min(r, 0.0)
+        call_pnl_pu = call_prem - max(r, 0.0)
         put_pnl     = put_size  * put_pnl_pu
         call_pnl    = call_size * call_pnl_pu
         month_pnl   = put_pnl + call_pnl
         episode_pnl += month_pnl
         total_pnl   += month_pnl
 
-        # Gross loss from THIS month's ITM side — the only input to next size
         if r >= 0.0:
-            itm_loss = call_size * max(0.0,  r - PREMIUM)   # call ITM
-            itm_side = "call"
+            itm_loss     = call_size * max(0.0, r - call_prem)
+            recovery_prem = put_prem
+            itm_side      = "call"
         else:
-            itm_loss = put_size  * max(0.0, -r - PREMIUM)   # put  ITM
-            itm_side = "put"
+            itm_loss     = put_size  * max(0.0, -r - put_prem)
+            recovery_prem = call_prem
+            itm_side      = "put"
 
-        next_put, next_call = _next_sizes(r, itm_loss)
+        next_put, next_call = _next_sizes(r, itm_loss, recovery_prem)
 
-        # ── Reasoning ─────────────────────────────────────────────────────────
         if itm_loss == 0.0:
-            reason = f"{candle}: {itm_side} OTM (|ret|≤{PREMIUM*100:.0f}%) → both stay 1"
+            reason = f"{candle}: {itm_side} OTM → both stay 1"
         elif r >= 0.0:
             reason = (
-                f"UP: call ITM loss={itm_loss*100:.2f}% "
-                f"→ put_sz=ceil({itm_loss*100:.2f}/{PREMIUM*100:.0f}%)={next_put}"
+                f"UP: call ITM={itm_loss*100:.2f}% "
+                f"→ put_sz=ceil({itm_loss*100:.2f}/{recovery_prem*100:.2f}%)={next_put}"
             )
         else:
             reason = (
-                f"DN: put ITM loss={itm_loss*100:.2f}% "
-                f"→ call_sz=ceil({itm_loss*100:.2f}/{PREMIUM*100:.0f}%)={next_call}"
+                f"DN: put ITM={itm_loss*100:.2f}% "
+                f"→ call_sz=ceil({itm_loss*100:.2f}/{recovery_prem*100:.2f}%)={next_call}"
             )
 
         print(
             f"{date.strftime('%Y-%m'):<10} {r*100:>7.2f} {candle:>4}  "
+            f"{put_prem*100:>9.2f} {call_prem*100:>10.2f}  "
             f"{put_size:>5} {call_size:>5}  "
             f"{put_pnl*100:>9.2f} {call_pnl*100:>10.2f}  "
             f"{itm_loss*100:>10.2f}  {month_pnl*100:>7.2f} {episode_pnl*100:>12.2f}  "
@@ -422,7 +581,7 @@ def trace_stock(ticker: str) -> None:
         call_size = next_call
 
     print(f"\nTotal backtest PnL: {total_pnl*100:.2f}%")
-    print(f"{'='*100}\n")
+    print(f"{'='*110}\n")
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
@@ -430,20 +589,23 @@ def trace_stock(ticker: str) -> None:
 def main() -> None:
     import sys
 
+    # 0. Load real premiums from S3 (shared by all modes)
+    premiums = load_s3_premiums()
+
     # ── Trace mode: python strategy.py --trace AAPL ───────────────────────────
     if len(sys.argv) >= 2 and sys.argv[1] == "--trace":
         ticker = sys.argv[2] if len(sys.argv) >= 3 else "AAPL"
-        trace_stock(ticker)
+        trace_stock(ticker, premiums)
         return
 
     tickers = TOP100_TICKERS[:TOP_N]
 
-    # 1. Fetch data
+    # 1. Fetch price data
     closes = fetch_monthly_prices(tickers, START_DATE, END_DATE)
 
     # 2. Simulate per stock + aggregate portfolio
     print("Running strategy simulation …")
-    stock_results, portfolio_df = run_portfolio(closes)
+    stock_results, portfolio_df = run_portfolio(closes, premiums)
     print(f"  → Simulated {len(stock_results)} stocks")
 
     # 3. Summary statistics
