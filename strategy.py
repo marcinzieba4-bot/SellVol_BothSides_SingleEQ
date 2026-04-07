@@ -90,42 +90,40 @@ def fetch_monthly_prices(tickers: list[str], start: str, end: str) -> pd.DataFra
 
 # ── Strategy Simulation ────────────────────────────────────────────────────────
 
-def _next_sizes(
-    r: float,
-    cum_pnl: float,
-    put_gross_loss: float,
-    call_gross_loss: float,
-    first_month: bool,
-) -> tuple[int, int, bool]:
+def _next_sizes(r: float, itm_gross_loss: float) -> tuple[int, int]:
     """
-    Compute (put_size, call_size, recovery_mode) for the NEXT month.
+    Compute (put_size, call_size) for the NEXT month based solely on
+    THIS month's gross loss from the ITM side.
 
-    Sizing rule:
-      UP  candle → put_size = ceil(call_gross_loss / PREMIUM), call_size = 1
-      DOWN candle → call_size = ceil(put_gross_loss  / PREMIUM), put_size = 1
-    Reset to (1, 1) when cumulative total PnL >= 0.
+    UP   candle → call may be ITM → size up PUTS  to recover call loss
+    DOWN candle → put  may be ITM → size up CALLS to recover put  loss
+    If neither side went ITM (|r| <= PREMIUM) → both stay at 1.
+
+    Recovery size = ceil(ITM_gross_loss / PREMIUM), minimum 1.
     """
-    if cum_pnl >= 0.0 and not first_month:
-        return 1, 1, False
-
-    if r >= 0.0:   # UP candle → size up PUTS
-        rec = max(1, int(np.ceil(call_gross_loss / PREMIUM)))
-        rec = min(rec, MAX_SIZE)
-        return rec, 1, cum_pnl < 0.0
-    else:          # DOWN candle → size up CALLS
-        rec = max(1, int(np.ceil(put_gross_loss / PREMIUM)))
-        rec = min(rec, MAX_SIZE)
-        return 1, rec, cum_pnl < 0.0
+    rec = max(1, int(np.ceil(itm_gross_loss / PREMIUM)))
+    rec = min(rec, MAX_SIZE)
+    if r >= 0.0:          # UP   → size PUTS, call = 1
+        return rec, 1
+    else:                 # DOWN → size CALLS, put = 1
+        return 1, rec
 
 
 def simulate_stock(ticker: str, prices: pd.Series) -> pd.DataFrame:
     """
     Simulate the vol-selling strategy for a single stock.
 
-    Returns a DataFrame with one row per month containing:
-      date, return, put_size, call_size, put_pnl_pct, call_pnl_pct,
-      month_pnl_pct, cumulative_pnl_pct, recovery_mode,
-      put_gross_loss_pct, call_gross_loss_pct, max_size_hit
+    Sizing rule (corrected):
+      • Sizing reacts to the PREVIOUS candle's ITM-side gross loss only —
+        no cross-month accumulation for sizing purposes.
+      • episode_cum_pnl tracks the running PnL of the current drawdown
+        (resets to 0 whenever it turns positive).
+      • total_cum_pnl accumulates the full backtest history.
+
+    Columns returned per month:
+      date, return_pct, put_size, call_size, put_pnl_pct, call_pnl_pct,
+      itm_gross_loss_pct, month_pnl_pct, episode_cum_pnl_pct,
+      total_cum_pnl_pct, in_recovery, max_size_hit
     """
     prices = prices.dropna()
     if len(prices) < 3:
@@ -134,62 +132,61 @@ def simulate_stock(ticker: str, prices: pd.Series) -> pd.DataFrame:
     returns = prices.pct_change().dropna()
     n       = len(returns)
 
-    records        = []
-    cum_pnl        = 0.0
-    put_gross_loss = 0.0   # accumulated gross loss from PUT going ITM
-    call_gross_loss= 0.0   # accumulated gross loss from CALL going ITM
-    put_size       = 1
-    call_size      = 1
-    recovery       = False
-    first_month    = True
+    records     = []
+    episode_pnl = 0.0   # PnL of the current sized-up cycle; resets to 0
+    #                     whenever both sizes are 1 at the START of a month
+    #                     (i.e. we are at base / no recovery underway)
+    total_pnl   = 0.0   # full backtest running total, never resets
+    put_size    = 1
+    call_size   = 1
 
     for i in range(n):
         r    = float(returns.iloc[i])
         date = returns.index[i]
 
-        # ── PnL for this month (sizes were set at end of previous month) ──────
-        put_pnl_pu  = PREMIUM + min(r, 0.0)          # per-unit put PnL
-        call_pnl_pu = PREMIUM - max(r, 0.0)          # per-unit call PnL
+        # ── Episode reset: back to base size means a fresh cycle ──────────────
+        # When both sides are 1 at the START of this month, the previous cycle
+        # (if any) has concluded. Start the episode counter fresh.
+        if put_size == 1 and call_size == 1:
+            episode_pnl = 0.0
+
+        # ── PnL this month (sizes set last month) ─────────────────────────────
+        put_pnl_pu  = PREMIUM + min(r, 0.0)   # per-unit put  PnL in % of S
+        call_pnl_pu = PREMIUM - max(r, 0.0)   # per-unit call PnL in % of S
         put_pnl     = put_size  * put_pnl_pu
         call_pnl    = call_size * call_pnl_pu
         month_pnl   = put_pnl + call_pnl
-        cum_pnl    += month_pnl
 
-        # ── Accumulate GROSS losses per side (used for sizing, not reset) ─────
-        # Only add when the side is actually ITM (pnl per unit < 0)
-        if put_pnl_pu < 0.0:
-            put_gross_loss  += put_size  * abs(put_pnl_pu)
-        if call_pnl_pu < 0.0:
-            call_gross_loss += call_size * abs(call_pnl_pu)
+        episode_pnl += month_pnl
+        total_pnl   += month_pnl
+
+        # ── Gross loss from THIS month's ITM side (drives NEXT month's size) ─
+        # put  goes ITM when r < -PREMIUM  (stock fell through strike)
+        # call goes ITM when r >  PREMIUM  (stock rose through strike)
+        if r >= 0.0:
+            itm_gross_loss = call_size * max(0.0,  r - PREMIUM)   # call ITM
+        else:
+            itm_gross_loss = put_size  * max(0.0, -r - PREMIUM)   # put  ITM
 
         max_hit = (put_size >= MAX_SIZE or call_size >= MAX_SIZE)
 
         records.append({
-            "date":                date,
-            "return_pct":          round(r * 100, 4),
-            "put_size":            put_size,
-            "call_size":           call_size,
-            "put_pnl_pct":         round(put_pnl       * 100, 4),
-            "call_pnl_pct":        round(call_pnl      * 100, 4),
-            "month_pnl_pct":       round(month_pnl     * 100, 4),
-            "cumulative_pnl_pct":  round(cum_pnl       * 100, 4),
-            "put_gross_loss_pct":  round(put_gross_loss * 100, 4),
-            "call_gross_loss_pct": round(call_gross_loss* 100, 4),
-            "recovery_mode":       recovery,
-            "max_size_hit":        max_hit,
+            "date":               date,
+            "return_pct":         round(r            * 100, 4),
+            "put_size":           put_size,
+            "call_size":          call_size,
+            "put_pnl_pct":        round(put_pnl       * 100, 4),
+            "call_pnl_pct":       round(call_pnl      * 100, 4),
+            "itm_gross_loss_pct": round(itm_gross_loss * 100, 4),
+            "month_pnl_pct":      round(month_pnl     * 100, 4),
+            "episode_cum_pnl_pct":round(episode_pnl   * 100, 4),
+            "total_cum_pnl_pct":  round(total_pnl     * 100, 4),
+            "in_recovery":        episode_pnl < 0.0,
+            "max_size_hit":       max_hit,
         })
 
-        # ── Decide sizes for NEXT month ───────────────────────────────────────
-        put_size, call_size, recovery = _next_sizes(
-            r, cum_pnl, put_gross_loss, call_gross_loss, first_month
-        )
-
-        # If fully recovered, clear the gross-loss accumulators for fresh start
-        if not recovery:
-            put_gross_loss  = 0.0
-            call_gross_loss = 0.0
-
-        first_month = False
+        # ── Next month's sizes: purely from this month's ITM loss ─────────────
+        put_size, call_size = _next_sizes(r, itm_gross_loss)
 
     return pd.DataFrame(records)
 
@@ -234,12 +231,13 @@ def compute_summary(stock_results: dict[str, pd.DataFrame], portfolio_df: pd.Dat
         total_pnl     = df["month_pnl_pct"].sum()
         avg_monthly   = df["month_pnl_pct"].mean()
         win_rate      = (df["month_pnl_pct"] > 0).mean() * 100
-        max_drawdown  = (df["cumulative_pnl_pct"] - df["cumulative_pnl_pct"].cummax()).min()
+        total_col     = df["total_cum_pnl_pct"]
+        max_drawdown  = (total_col - total_col.cummax()).min()
         max_put_size  = df["put_size"].max()
         max_call_size = df["call_size"].max()
         max_hit       = df["max_size_hit"].any()
-        recovery_pct  = df["recovery_mode"].mean() * 100
-        final_cum_pnl = df["cumulative_pnl_pct"].iloc[-1]
+        recovery_pct  = df["in_recovery"].mean() * 100
+        final_cum_pnl = total_col.iloc[-1]
 
         rows.append({
             "ticker":             ticker,
@@ -330,93 +328,101 @@ def print_summary(summary: pd.DataFrame) -> None:
 
 def trace_stock(ticker: str) -> None:
     """
-    Fetch data for one ticker and print a month-by-month sizing walk-through,
-    showing exactly how position sizes are determined from the previous candle.
+    Fetch data for one ticker and print a month-by-month sizing walk-through.
+
+    Columns:
+      Month   — calendar month of the candle
+      Ret%    — monthly return of the stock
+      Candle  — UP or DOWN
+      P_sz / C_sz — put / call sizes IN EFFECT this month (set last month)
+      Put PnL% / Call PnL% — actual PnL of each leg this month
+      ITM_loss% — gross loss from whichever side went ITM this month
+                  (this single number drives next month's recovery size)
+      Month%  — net PnL this month (both legs combined)
+      EpisodePnL% — running PnL of the current drawdown (resets to 0 when ≥ 0)
+      Next P_sz / C_sz — sizes set for next month
+      Reasoning — plain-English explanation
     """
-    print(f"\n{'='*80}")
+    print(f"\n{'='*100}")
     print(f"  STEP-BY-STEP SIZING TRACE — {ticker}")
-    print(f"  Premium = {PREMIUM*100:.1f}% per unit per month")
-    print(f"{'='*80}")
-    print(
-        f"\n{'Month':<10} {'Ret%':>7} {'Candle':>6}  "
+    print(f"  Premium = {PREMIUM*100:.1f}% per unit | sizing = ceil(ITM_gross_loss / {PREMIUM*100:.0f}%)")
+    print(f"{'='*100}")
+    hdr = (
+        f"{'Month':<10} {'Ret%':>7} {'Cndl':>4}  "
         f"{'P_sz':>5} {'C_sz':>5}  "
         f"{'Put PnL%':>9} {'Call PnL%':>10}  "
-        f"{'PutGrossL%':>11} {'CallGrossL%':>12}  "
-        f"{'CumPnL%':>8}  {'Next P_sz':>9} {'Next C_sz':>9}  Reasoning"
+        f"{'ITM_loss%':>10}  {'Month%':>7} {'EpisodePnL%':>12}  "
+        f"{'NxtP':>5} {'NxtC':>5}  Reasoning"
     )
-    print("-" * 160)
+    print(hdr)
+    print("-" * len(hdr))
 
     raw = yf.download(ticker, start=START_DATE, end=END_DATE,
                       interval="1mo", auto_adjust=True, progress=False)
     close_col = raw["Close"]
     if isinstance(close_col, pd.DataFrame):
         close_col = close_col.iloc[:, 0]
-    prices = close_col.dropna()
+    prices  = close_col.dropna()
     returns = prices.pct_change().dropna()
 
-    cum_pnl         = 0.0
-    put_gross_loss  = 0.0
-    call_gross_loss = 0.0
-    put_size        = 1
-    call_size       = 1
-    recovery        = False
-    first_month     = True
+    episode_pnl  = 0.0
+    total_pnl    = 0.0
+    put_size     = 1
+    call_size    = 1
 
-    for i, (date, r) in enumerate(returns.items()):
+    for date, r in returns.items():
         r = float(r)
-        candle = "UP  " if r >= 0 else "DOWN"
+        candle = "UP" if r >= 0 else "DN"
+
+        # Episode resets to 0 when both sizes are at base (fresh cycle)
+        if put_size == 1 and call_size == 1:
+            episode_pnl = 0.0
 
         put_pnl_pu  = PREMIUM + min(r, 0.0)
         call_pnl_pu = PREMIUM - max(r, 0.0)
         put_pnl     = put_size  * put_pnl_pu
         call_pnl    = call_size * call_pnl_pu
-        cum_pnl    += put_pnl + call_pnl
+        month_pnl   = put_pnl + call_pnl
+        episode_pnl += month_pnl
+        total_pnl   += month_pnl
 
-        if put_pnl_pu  < 0.0: put_gross_loss  += put_size  * abs(put_pnl_pu)
-        if call_pnl_pu < 0.0: call_gross_loss += call_size * abs(call_pnl_pu)
-
-        next_put, next_call, recovery = _next_sizes(
-            r, cum_pnl, put_gross_loss, call_gross_loss, first_month
-        )
-
-        # ── Build human-readable reasoning ────────────────────────────────────
-        if cum_pnl >= 0.0 and not first_month:
-            reason = "RESET — cum PnL ≥ 0"
-        elif r >= 0.0:
-            if call_gross_loss > 0.0:
-                reason = (
-                    f"UP: call gross loss={call_gross_loss*100:.2f}% "
-                    f"→ put_sz=ceil({call_gross_loss*100:.2f}/{PREMIUM*100:.0f})={next_put}"
-                )
-            else:
-                reason = "UP: no call loss yet → put_sz=1"
+        # Gross loss from THIS month's ITM side — the only input to next size
+        if r >= 0.0:
+            itm_loss = call_size * max(0.0,  r - PREMIUM)   # call ITM
+            itm_side = "call"
         else:
-            if put_gross_loss > 0.0:
-                reason = (
-                    f"DOWN: put gross loss={put_gross_loss*100:.2f}% "
-                    f"→ call_sz=ceil({put_gross_loss*100:.2f}/{PREMIUM*100:.0f})={next_call}"
-                )
-            else:
-                reason = "DOWN: no put loss yet → call_sz=1"
+            itm_loss = put_size  * max(0.0, -r - PREMIUM)   # put  ITM
+            itm_side = "put"
+
+        next_put, next_call = _next_sizes(r, itm_loss)
+
+        # ── Reasoning ─────────────────────────────────────────────────────────
+        if itm_loss == 0.0:
+            reason = f"{candle}: {itm_side} OTM (|ret|≤{PREMIUM*100:.0f}%) → both stay 1"
+        elif r >= 0.0:
+            reason = (
+                f"UP: call ITM loss={itm_loss*100:.2f}% "
+                f"→ put_sz=ceil({itm_loss*100:.2f}/{PREMIUM*100:.0f}%)={next_put}"
+            )
+        else:
+            reason = (
+                f"DN: put ITM loss={itm_loss*100:.2f}% "
+                f"→ call_sz=ceil({itm_loss*100:.2f}/{PREMIUM*100:.0f}%)={next_call}"
+            )
 
         print(
-            f"{date.strftime('%Y-%m'):<10} {r*100:>7.2f} {candle:>6}  "
+            f"{date.strftime('%Y-%m'):<10} {r*100:>7.2f} {candle:>4}  "
             f"{put_size:>5} {call_size:>5}  "
             f"{put_pnl*100:>9.2f} {call_pnl*100:>10.2f}  "
-            f"{put_gross_loss*100:>11.2f} {call_gross_loss*100:>12.2f}  "
-            f"{cum_pnl*100:>8.2f}  {next_put:>9} {next_call:>9}  {reason}"
+            f"{itm_loss*100:>10.2f}  {month_pnl*100:>7.2f} {episode_pnl*100:>12.2f}  "
+            f"{next_put:>5} {next_call:>5}  {reason}"
         )
 
-        if not recovery:
-            put_gross_loss  = 0.0
-            call_gross_loss = 0.0
+        put_size  = next_put
+        call_size = next_call
 
-        put_size    = next_put
-        call_size   = next_call
-        first_month = False
-
-    print(f"\nFinal cumulative PnL: {cum_pnl*100:.2f}%")
-    print(f"{'='*80}\n")
+    print(f"\nTotal backtest PnL: {total_pnl*100:.2f}%")
+    print(f"{'='*100}\n")
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
