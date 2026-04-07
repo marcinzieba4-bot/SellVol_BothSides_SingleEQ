@@ -241,20 +241,21 @@ def simulate_stock(
     premiums: dict,
 ) -> pd.DataFrame:
     """
-    One-sided vol-selling strategy with controlled recovery sizing.
+    One-sided vol-selling strategy with cumulative-loss recovery sizing.
 
     Each month sells ONE leg chosen by the PREVIOUS candle:
       prev UP   → sell PUT   prev DOWN → sell CALL
 
-    Sizing rule:
-      loss_to_recover = gross loss from the last BASE (size=1) trade that went ITM.
-      Only base-trade losses accumulate; recovery-trade outcomes are accepted
-      as-is and do NOT compound into loss_to_recover.  This prevents martingale
-      blow-up while still scaling up to recover a defined loss.
+    Sizing rule (true cumulative martingale):
+      cumulated_loss = running total PnL deficit of the current episode.
+      Every trade outcome (win or loss) adjusts cumulated_loss.
+      size = ceil(cumulated_loss / premium)
+        → if this month wins at full premium, it exactly wipes the deficit.
+      When cumulated_loss reaches 0 (episode recovered), reset size to 1.
 
-      size = ceil(loss_to_recover / premium);  size=1 when no deficit.
-
-    Reset (size→1, loss_to_recover→0) when episode PnL turns ≥ 0.
+    Because recovery-trade losses also compound into cumulated_loss, the size
+    is always sized to recover the TOTAL deficit in one good month.
+    MAX_SIZE caps runaway sizes.
     """
     prices = prices.dropna()
     if len(prices) < 3:
@@ -263,12 +264,10 @@ def simulate_stock(
     returns = prices.pct_change().dropna()
     n       = len(returns)
 
-    records          = []
-    total_pnl        = 0.0
-    episode_pnl      = 0.0   # running PnL of the current episode (for reset check)
-    loss_to_recover  = 0.0   # gross loss from last BASE trade that went ITM
-    sell_put         = True  # default: first trade sells a put (prior candle assumed UP)
-    in_recovery      = False # True while size > 1
+    records        = []
+    total_pnl      = 0.0
+    episode_pnl    = 0.0   # running sum of month_pnl in current episode (fractions)
+    sell_put       = True  # default: first trade sells a put (prior candle assumed UP)
 
     for i in range(n):
         r     = float(returns.iloc[i])
@@ -278,8 +277,13 @@ def simulate_stock(
         side = "put" if sell_put else "call"
         prem = get_premium(premiums, ticker, month, side)
 
-        # ── Size ─────────────────────────────────────────────────────────────
-        size = _calc_size(loss_to_recover, prem)
+        # ── Cumulated loss = deficit still owed from this episode ─────────────
+        cumulated_loss = max(0.0, -episode_pnl)
+        in_recovery    = cumulated_loss > 0.0
+
+        # ── Size: enough units so one premium-winning month covers the deficit ─
+        size    = _calc_size(cumulated_loss, prem)
+        max_hit = size >= MAX_SIZE
 
         # ── PnL this month ────────────────────────────────────────────────────
         if sell_put:
@@ -291,38 +295,24 @@ def simulate_stock(
         episode_pnl += month_pnl
         total_pnl   += month_pnl
 
-        max_hit = size >= MAX_SIZE
+        # Reset episode when deficit is cleared
+        if episode_pnl >= 0.0:
+            episode_pnl = 0.0
 
         records.append({
-            "date":               date,
-            "selling":            side,
-            "prem_pct":           round(prem           * 100, 4),
-            "size":               size,
-            "return_pct":         round(r               * 100, 4),
-            "pnl_pu_pct":         round(pnl_pu          * 100, 4),
-            "month_pnl_pct":      round(month_pnl       * 100, 4),
-            "loss_to_recover_pct":round(loss_to_recover * 100, 4),
-            "episode_cum_pnl_pct":round(episode_pnl     * 100, 4),
-            "total_cum_pnl_pct":  round(total_pnl       * 100, 4),
-            "in_recovery":        in_recovery,
-            "max_size_hit":       max_hit,
+            "date":                date,
+            "selling":             side,
+            "prem_pct":            round(prem            * 100, 4),
+            "size":                size,
+            "return_pct":          round(r                * 100, 4),
+            "pnl_pu_pct":          round(pnl_pu           * 100, 4),
+            "month_pnl_pct":       round(month_pnl        * 100, 4),
+            "cumulated_loss_pct":  round(cumulated_loss   * 100, 4),
+            "episode_cum_pnl_pct": round(episode_pnl      * 100, 4),
+            "total_cum_pnl_pct":   round(total_pnl        * 100, 4),
+            "in_recovery":         in_recovery,
+            "max_size_hit":        max_hit,
         })
-
-        # ── Update loss_to_recover and episode state ──────────────────────────
-        if not in_recovery:
-            # Base trade (size=1): if it goes ITM, record the gross loss to recover
-            base_itm_loss = max(0.0, -pnl_pu)   # per-unit loss (size was 1)
-            if base_itm_loss > 0.0:
-                loss_to_recover = base_itm_loss
-                in_recovery     = True
-            # else: OTM → clean, loss_to_recover stays 0
-        else:
-            # Recovery trade: accept the outcome; DON'T add to loss_to_recover
-            # Reset when episode is back to positive
-            if episode_pnl >= 0.0:
-                loss_to_recover = 0.0
-                in_recovery     = False
-                episode_pnl     = 0.0
 
         # ── Next month direction ──────────────────────────────────────────────
         sell_put = (r >= 0.0)
@@ -659,11 +649,9 @@ def trace_stock(ticker: str, premiums: dict) -> None:
         close_col = close_col.iloc[:, 0]
     returns = close_col.dropna().pct_change().dropna()
 
-    total_pnl       = 0.0
-    episode_pnl     = 0.0
-    loss_to_recover = 0.0
-    sell_put        = True
-    in_recovery     = False
+    total_pnl   = 0.0
+    episode_pnl = 0.0
+    sell_put    = True
 
     for date, r in returns.items():
         r      = float(r)
@@ -671,7 +659,10 @@ def trace_stock(ticker: str, premiums: dict) -> None:
         month  = pd.Period(date, "M")
         side   = "put" if sell_put else "call"
         prem   = get_premium(premiums, ticker, month, side)
-        size   = _calc_size(loss_to_recover, prem)
+
+        cumulated_loss = max(0.0, -episode_pnl)
+        in_recovery    = cumulated_loss > 0.0
+        size           = _calc_size(cumulated_loss, prem)
 
         pnl_pu    = (prem + min(r, 0.0)) if sell_put else (prem - max(r, 0.0))
         month_pnl = size * pnl_pu
@@ -683,8 +674,8 @@ def trace_stock(ticker: str, premiums: dict) -> None:
             reason = f"base sz=1  |  next → {next_side}"
         else:
             reason = (
-                f"recover {loss_to_recover*100:.2f}% "
-                f"→ ceil({loss_to_recover*100:.2f}/{prem*100:.2f}%)={size}"
+                f"cumLoss={cumulated_loss*100:.2f}% "
+                f"→ ceil({cumulated_loss*100:.2f}/{prem*100:.2f}%)={size}"
                 f"  |  next → {next_side}"
             )
 
@@ -695,16 +686,8 @@ def trace_stock(ticker: str, premiums: dict) -> None:
             f"{next_side:>4}  {reason}"
         )
 
-        if not in_recovery:
-            base_itm_loss = max(0.0, -pnl_pu)
-            if base_itm_loss > 0.0:
-                loss_to_recover = base_itm_loss
-                in_recovery     = True
-        else:
-            if episode_pnl >= 0.0:
-                loss_to_recover = 0.0
-                in_recovery     = False
-                episode_pnl     = 0.0
+        if episode_pnl >= 0.0:
+            episode_pnl = 0.0
 
         sell_put = (r >= 0.0)
 
