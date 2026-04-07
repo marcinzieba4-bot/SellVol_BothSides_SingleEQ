@@ -10,10 +10,20 @@ Strategy rules:
   4. Each subsequent month, after observing the last candle:
        UP  candle → size up PUTS  for recovery, CALL  stays size=1
        DOWN candle → size up CALLS for recovery, PUT   stays size=1
-  5. Recovery sizing:
-       recovery_size = ceil( |accumulated_pnl_loss| / PREMIUM )
-       where PREMIUM = 3 % of stock price per unit per month
-  6. Reset both sides to size=1 after cumulative PnL turns positive again.
+  5. Recovery sizing — KEY RULE:
+       Losses are counted PER SIDE only.  The winning side keeps its
+       premium intact and does NOT reduce the losing side's loss.
+       Example: -10 % candle → call earns +3 % (intact),
+                                put  loses  7 % (= 3 % - 10 %)
+       → need ceil(7 % / 3 %) = 3 units of CALL next month to recover.
+
+       put_gross_loss  accumulates whenever put goes ITM (r < -PREMIUM)
+       call_gross_loss accumulates whenever call goes ITM (r >  PREMIUM)
+
+       call_size_next = ceil(put_gross_loss  / PREMIUM)   after DOWN candle
+       put_size_next  = ceil(call_gross_loss / PREMIUM)   after UP   candle
+
+  6. Reset both sides to size=1 when cumulative total PnL turns >= 0.
 
 PnL model (simplified, per unit, in % of stock price):
   put_pnl_pct  = PREMIUM + min(r, 0)   →  capped at PREMIUM, unbounded below
@@ -80,13 +90,42 @@ def fetch_monthly_prices(tickers: list[str], start: str, end: str) -> pd.DataFra
 
 # ── Strategy Simulation ────────────────────────────────────────────────────────
 
+def _next_sizes(
+    r: float,
+    cum_pnl: float,
+    put_gross_loss: float,
+    call_gross_loss: float,
+    first_month: bool,
+) -> tuple[int, int, bool]:
+    """
+    Compute (put_size, call_size, recovery_mode) for the NEXT month.
+
+    Sizing rule:
+      UP  candle → put_size = ceil(call_gross_loss / PREMIUM), call_size = 1
+      DOWN candle → call_size = ceil(put_gross_loss  / PREMIUM), put_size = 1
+    Reset to (1, 1) when cumulative total PnL >= 0.
+    """
+    if cum_pnl >= 0.0 and not first_month:
+        return 1, 1, False
+
+    if r >= 0.0:   # UP candle → size up PUTS
+        rec = max(1, int(np.ceil(call_gross_loss / PREMIUM)))
+        rec = min(rec, MAX_SIZE)
+        return rec, 1, cum_pnl < 0.0
+    else:          # DOWN candle → size up CALLS
+        rec = max(1, int(np.ceil(put_gross_loss / PREMIUM)))
+        rec = min(rec, MAX_SIZE)
+        return 1, rec, cum_pnl < 0.0
+
+
 def simulate_stock(ticker: str, prices: pd.Series) -> pd.DataFrame:
     """
     Simulate the vol-selling strategy for a single stock.
 
     Returns a DataFrame with one row per month containing:
       date, return, put_size, call_size, put_pnl_pct, call_pnl_pct,
-      month_pnl_pct, cumulative_pnl_pct, recovery_mode, max_size_hit
+      month_pnl_pct, cumulative_pnl_pct, recovery_mode,
+      put_gross_loss_pct, call_gross_loss_pct, max_size_hit
     """
     prices = prices.dropna()
     if len(prices) < 3:
@@ -95,64 +134,60 @@ def simulate_stock(ticker: str, prices: pd.Series) -> pd.DataFrame:
     returns = prices.pct_change().dropna()
     n       = len(returns)
 
-    records    = []
-    cum_pnl    = 0.0   # cumulative PnL in % of stock price (per unit basis)
-    put_size   = 1
-    call_size  = 1
-    recovery   = False
-    first_month = True
+    records        = []
+    cum_pnl        = 0.0
+    put_gross_loss = 0.0   # accumulated gross loss from PUT going ITM
+    call_gross_loss= 0.0   # accumulated gross loss from CALL going ITM
+    put_size       = 1
+    call_size      = 1
+    recovery       = False
+    first_month    = True
 
     for i in range(n):
         r    = float(returns.iloc[i])
         date = returns.index[i]
 
-        # ── Realise PnL for month i using sizes set at end of month i-1 ──────
-        put_pnl  = put_size  * (PREMIUM + min(r, 0.0))   # profit when stock flat/up
-        call_pnl = call_size * (PREMIUM - max(r, 0.0))   # profit when stock flat/down
-        month_pnl = put_pnl + call_pnl
-        cum_pnl  += month_pnl
+        # ── PnL for this month (sizes were set at end of previous month) ──────
+        put_pnl_pu  = PREMIUM + min(r, 0.0)          # per-unit put PnL
+        call_pnl_pu = PREMIUM - max(r, 0.0)          # per-unit call PnL
+        put_pnl     = put_size  * put_pnl_pu
+        call_pnl    = call_size * call_pnl_pu
+        month_pnl   = put_pnl + call_pnl
+        cum_pnl    += month_pnl
 
-        # Track whether we hit the safety cap this month
+        # ── Accumulate GROSS losses per side (used for sizing, not reset) ─────
+        # Only add when the side is actually ITM (pnl per unit < 0)
+        if put_pnl_pu < 0.0:
+            put_gross_loss  += put_size  * abs(put_pnl_pu)
+        if call_pnl_pu < 0.0:
+            call_gross_loss += call_size * abs(call_pnl_pu)
+
         max_hit = (put_size >= MAX_SIZE or call_size >= MAX_SIZE)
 
         records.append({
-            "date":             date,
-            "return_pct":       round(r * 100, 4),
-            "put_size":         put_size,
-            "call_size":        call_size,
-            "put_pnl_pct":      round(put_pnl  * 100, 4),
-            "call_pnl_pct":     round(call_pnl * 100, 4),
-            "month_pnl_pct":    round(month_pnl * 100, 4),
-            "cumulative_pnl_pct": round(cum_pnl * 100, 4),
-            "recovery_mode":    recovery,
-            "max_size_hit":     max_hit,
+            "date":                date,
+            "return_pct":          round(r * 100, 4),
+            "put_size":            put_size,
+            "call_size":           call_size,
+            "put_pnl_pct":         round(put_pnl       * 100, 4),
+            "call_pnl_pct":        round(call_pnl      * 100, 4),
+            "month_pnl_pct":       round(month_pnl     * 100, 4),
+            "cumulative_pnl_pct":  round(cum_pnl       * 100, 4),
+            "put_gross_loss_pct":  round(put_gross_loss * 100, 4),
+            "call_gross_loss_pct": round(call_gross_loss* 100, 4),
+            "recovery_mode":       recovery,
+            "max_size_hit":        max_hit,
         })
 
         # ── Decide sizes for NEXT month ───────────────────────────────────────
-        if cum_pnl >= 0.0 and not first_month:
-            # Full recovery (or still in profit): reset to base
-            recovery  = False
-            put_size  = 1
-            call_size = 1
-        else:
-            if cum_pnl < 0.0:
-                recovery = True
+        put_size, call_size, recovery = _next_sizes(
+            r, cum_pnl, put_gross_loss, call_gross_loss, first_month
+        )
 
-            # Recovery size = units needed so premium covers accumulated loss
-            if recovery:
-                rec_size = int(np.ceil(abs(cum_pnl) / PREMIUM))
-                rec_size = max(1, min(rec_size, MAX_SIZE))
-            else:
-                rec_size = 1
-
-            if r >= 0.0:
-                # UP candle → size up PUTS; call stays at 1
-                put_size  = rec_size
-                call_size = 1
-            else:
-                # DOWN candle → size up CALLS; put stays at 1
-                call_size = rec_size
-                put_size  = 1
+        # If fully recovered, clear the gross-loss accumulators for fresh start
+        if not recovery:
+            put_gross_loss  = 0.0
+            call_gross_loss = 0.0
 
         first_month = False
 
@@ -291,9 +326,110 @@ def print_summary(summary: pd.DataFrame) -> None:
     print("=" * 72)
 
 
+# ── Single-Stock Trace ─────────────────────────────────────────────────────────
+
+def trace_stock(ticker: str) -> None:
+    """
+    Fetch data for one ticker and print a month-by-month sizing walk-through,
+    showing exactly how position sizes are determined from the previous candle.
+    """
+    print(f"\n{'='*80}")
+    print(f"  STEP-BY-STEP SIZING TRACE — {ticker}")
+    print(f"  Premium = {PREMIUM*100:.1f}% per unit per month")
+    print(f"{'='*80}")
+    print(
+        f"\n{'Month':<10} {'Ret%':>7} {'Candle':>6}  "
+        f"{'P_sz':>5} {'C_sz':>5}  "
+        f"{'Put PnL%':>9} {'Call PnL%':>10}  "
+        f"{'PutGrossL%':>11} {'CallGrossL%':>12}  "
+        f"{'CumPnL%':>8}  {'Next P_sz':>9} {'Next C_sz':>9}  Reasoning"
+    )
+    print("-" * 160)
+
+    raw = yf.download(ticker, start=START_DATE, end=END_DATE,
+                      interval="1mo", auto_adjust=True, progress=False)
+    close_col = raw["Close"]
+    if isinstance(close_col, pd.DataFrame):
+        close_col = close_col.iloc[:, 0]
+    prices = close_col.dropna()
+    returns = prices.pct_change().dropna()
+
+    cum_pnl         = 0.0
+    put_gross_loss  = 0.0
+    call_gross_loss = 0.0
+    put_size        = 1
+    call_size       = 1
+    recovery        = False
+    first_month     = True
+
+    for i, (date, r) in enumerate(returns.items()):
+        r = float(r)
+        candle = "UP  " if r >= 0 else "DOWN"
+
+        put_pnl_pu  = PREMIUM + min(r, 0.0)
+        call_pnl_pu = PREMIUM - max(r, 0.0)
+        put_pnl     = put_size  * put_pnl_pu
+        call_pnl    = call_size * call_pnl_pu
+        cum_pnl    += put_pnl + call_pnl
+
+        if put_pnl_pu  < 0.0: put_gross_loss  += put_size  * abs(put_pnl_pu)
+        if call_pnl_pu < 0.0: call_gross_loss += call_size * abs(call_pnl_pu)
+
+        next_put, next_call, recovery = _next_sizes(
+            r, cum_pnl, put_gross_loss, call_gross_loss, first_month
+        )
+
+        # ── Build human-readable reasoning ────────────────────────────────────
+        if cum_pnl >= 0.0 and not first_month:
+            reason = "RESET — cum PnL ≥ 0"
+        elif r >= 0.0:
+            if call_gross_loss > 0.0:
+                reason = (
+                    f"UP: call gross loss={call_gross_loss*100:.2f}% "
+                    f"→ put_sz=ceil({call_gross_loss*100:.2f}/{PREMIUM*100:.0f})={next_put}"
+                )
+            else:
+                reason = "UP: no call loss yet → put_sz=1"
+        else:
+            if put_gross_loss > 0.0:
+                reason = (
+                    f"DOWN: put gross loss={put_gross_loss*100:.2f}% "
+                    f"→ call_sz=ceil({put_gross_loss*100:.2f}/{PREMIUM*100:.0f})={next_call}"
+                )
+            else:
+                reason = "DOWN: no put loss yet → call_sz=1"
+
+        print(
+            f"{date.strftime('%Y-%m'):<10} {r*100:>7.2f} {candle:>6}  "
+            f"{put_size:>5} {call_size:>5}  "
+            f"{put_pnl*100:>9.2f} {call_pnl*100:>10.2f}  "
+            f"{put_gross_loss*100:>11.2f} {call_gross_loss*100:>12.2f}  "
+            f"{cum_pnl*100:>8.2f}  {next_put:>9} {next_call:>9}  {reason}"
+        )
+
+        if not recovery:
+            put_gross_loss  = 0.0
+            call_gross_loss = 0.0
+
+        put_size    = next_put
+        call_size   = next_call
+        first_month = False
+
+    print(f"\nFinal cumulative PnL: {cum_pnl*100:.2f}%")
+    print(f"{'='*80}\n")
+
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    import sys
+
+    # ── Trace mode: python strategy.py --trace AAPL ───────────────────────────
+    if len(sys.argv) >= 2 and sys.argv[1] == "--trace":
+        ticker = sys.argv[2] if len(sys.argv) >= 3 else "AAPL"
+        trace_stock(ticker)
+        return
+
     tickers = TOP100_TICKERS[:TOP_N]
 
     # 1. Fetch data
