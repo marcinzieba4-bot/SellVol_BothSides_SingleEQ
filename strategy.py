@@ -235,93 +235,39 @@ def _calc_size(accumulated_loss: float, premium: float) -> int:
     return min(MAX_SIZE, max(1, int(np.ceil(accumulated_loss / denom))))
 
 
-def simulate_stock(
+def _get_stock_monthly_data(
     ticker: str,
     prices: pd.Series,
     premiums: dict,
 ) -> pd.DataFrame:
     """
-    PUT-only vol-selling strategy with cumulative-loss recovery sizing.
+    Scan monthly returns and compute per-unit base metrics — no sizing.
 
-    Trade rule:
-      Previous candle UP   → sell PUT this month (stock rose, direction favour)
-      Previous candle DOWN → SKIP this month, hold flat, wait for up candle
-
-    Sizing rule (true cumulative martingale, puts only):
-      cumulated_loss = total PnL deficit of the current episode.
-      size = ceil(cumulated_loss / premium)
-        → if this month collects full premium, it exactly clears the deficit.
-      When cumulated_loss reaches 0 (episode recovered), reset to size=1.
-      MAX_SIZE caps runaway sizes.
+    Returns one row per month:
+      date, trade (bool: True if prev candle was UP),
+      prem_frac, return_frac, pnl_pu_frac  (all fractions, size=1 implied)
     """
     prices = prices.dropna()
     if len(prices) < 3:
         return pd.DataFrame()
 
     returns = prices.pct_change().dropna()
-    n       = len(returns)
+    records = []
+    prev_up = True   # assume first prior candle was UP
 
-    records     = []
-    total_pnl   = 0.0
-    episode_pnl = 0.0   # running episode deficit (fractions, put-only)
-    prev_up     = True  # assume prior candle was UP → first month trades
-
-    for i in range(n):
+    for i in range(len(returns)):
         r     = float(returns.iloc[i])
         date  = returns.index[i]
         month = pd.Period(date, "M")
 
-        cumulated_loss = max(0.0, -episode_pnl)
-        in_recovery    = cumulated_loss > 0.0
-
-        if not prev_up:
-            # ── SKIP: previous candle was DOWN, wait for an up candle ─────────
-            records.append({
-                "date":                date,
-                "selling":             "skip",
-                "prem_pct":            0.0,
-                "size":                0,
-                "return_pct":          round(r * 100, 4),
-                "pnl_pu_pct":          0.0,
-                "month_pnl_pct":       0.0,
-                "cumulated_loss_pct":  round(cumulated_loss * 100, 4),
-                "episode_cum_pnl_pct": round(episode_pnl    * 100, 4),
-                "total_cum_pnl_pct":   round(total_pnl      * 100, 4),
-                "in_recovery":         in_recovery,
-                "max_size_hit":        False,
-            })
-            prev_up = (r >= 0.0)
-            continue
-
-        # ── TRADE: previous candle was UP → sell PUT ──────────────────────────
-        prem    = get_premium(premiums, ticker, month, "put")
-        size    = _calc_size(cumulated_loss, prem)
-        max_hit = size >= MAX_SIZE
-
-        pnl_pu    = prem + min(r, 0.0)
-        month_pnl = size * pnl_pu
-        episode_pnl += month_pnl
-        total_pnl   += month_pnl
-
-        if episode_pnl >= 0.0:
-            episode_pnl = 0.0
-
-        records.append({
-            "date":                date,
-            "selling":             "put",
-            "prem_pct":            round(prem            * 100, 4),
-            "size":                size,
-            "return_pct":          round(r                * 100, 4),
-            "pnl_pu_pct":          round(pnl_pu           * 100, 4),
-            "month_pnl_pct":       round(month_pnl        * 100, 4),
-            "cumulated_loss_pct":  round(cumulated_loss   * 100, 4),
-            "episode_cum_pnl_pct": round(episode_pnl      * 100, 4),
-            "total_cum_pnl_pct":   round(total_pnl        * 100, 4),
-            "in_recovery":         in_recovery,
-            "max_size_hit":        max_hit,
-        })
-
-        # ── Next month direction ──────────────────────────────────────────────
+        if prev_up:
+            prem   = get_premium(premiums, ticker, month, "put")
+            pnl_pu = prem + min(r, 0.0)
+            records.append({"date": date, "trade": True,
+                             "prem_frac": prem, "return_frac": r, "pnl_pu_frac": pnl_pu})
+        else:
+            records.append({"date": date, "trade": False,
+                             "prem_frac": 0.0, "return_frac": r, "pnl_pu_frac": 0.0})
         prev_up = (r >= 0.0)
 
     return pd.DataFrame(records)
@@ -334,58 +280,120 @@ def run_portfolio(
     premiums: dict,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """
-    Simulate strategy for every ticker.
+    Portfolio-level recovery sizing.
 
-    Portfolio model:
-      • Each stock receives 1/100 of total capital at base (size=1).
-      • In recovery, that stock's capital multiplies by its size.
-      • Monthly portfolio return = sum(size_i × pnl_pu_i) / 100   [in %]
-      • Capital deployed        = sum(size_i) / 100               [leverage ratio]
+    Each month:
+      • All stocks with prev candle UP are eligible to trade (sell put).
+      • A single uniform_size is computed from the portfolio-level deficit:
 
-    Returns (stock_results dict, portfolio_df with monthly summary).
+          uniform_size = ceil(portfolio_cumulated_loss% × 100
+                              / (n_active × avg_put_premium%))
+
+        → if every active stock collects full premium this month,
+          the portfolio deficit is exactly cleared.
+
+      • Skipped stocks (prev candle DOWN) contribute 0 this month but
+        their 1/100 capital allocation is untouched.
+
+    portfolio_episode_pnl resets to 0 when deficit is cleared.
     """
-    stock_results: dict[str, pd.DataFrame] = {}
-
+    # Step 1: per-stock base data (direction + per-unit PnL, no sizing)
+    base: dict[str, pd.DataFrame] = {}
     for ticker in closes.columns:
-        df = simulate_stock(ticker, closes[ticker], premiums)
+        df = _get_stock_monthly_data(ticker, closes[ticker], premiums)
         if not df.empty:
-            stock_results[ticker] = df
+            base[ticker] = df.set_index("date")
 
-    if not stock_results:
+    if not base:
         raise RuntimeError("No valid stock simulations produced.")
 
-    # Aggregate across stocks per calendar month
-    monthly_buckets: dict = {}   # date → accumulators
+    all_dates = sorted({d for df in base.values() for d in df.index})
 
-    for ticker, df in stock_results.items():
-        for _, row in df.iterrows():
-            date = row["date"]
-            b = monthly_buckets.setdefault(
-                date,
-                {"ret_sum": 0.0, "size_sum": 0, "n_stocks": 0, "n_recovery": 0},
-            )
-            b["ret_sum"]    += float(row["size"]) * float(row["pnl_pu_pct"]) / 100.0
-            b["size_sum"]   += int(row["size"])
-            b["n_stocks"]   += 1
-            if bool(row["in_recovery"]):
-                b["n_recovery"] += 1
+    # Step 2: month-by-month with portfolio-level state
+    portfolio_episode_pnl = 0.0   # portfolio % (e.g. -0.70 = -70%)
+    portfolio_cum_pnl     = 0.0   # portfolio % cumulative
 
-    rows = []
-    cum_return = 0.0
-    for date in sorted(monthly_buckets.keys()):
-        b = monthly_buckets[date]
-        monthly_ret = b["ret_sum"]   # already divided by 100 (portfolio %)
-        cum_return += monthly_ret
-        rows.append({
-            "date":                    date,
-            "monthly_return_pct":      round(monthly_ret,            4),
-            "cumulative_return_pct":   round(cum_return,             4),
-            "capital_deployed":        round(b["size_sum"] / 100.0,  2),
-            "num_stocks":              b["n_stocks"],
-            "num_stocks_in_recovery":  b["n_recovery"],
+    stock_cum_pnl: dict[str, float] = {t: 0.0 for t in base}
+    all_stock_rows: dict[str, list] = {t: [] for t in base}
+    monthly_rows: list              = []
+
+    for date in all_dates:
+        # Cumulated loss from last month's close
+        portfolio_cumulated_loss = max(0.0, -portfolio_episode_pnl)   # portfolio %
+        in_recovery              = portfolio_cumulated_loss > 0.0
+
+        # Active stocks this month
+        active = [t for t in base if date in base[t].index and bool(base[t].loc[date, "trade"])]
+        n_active = len(active)
+
+        # ── Uniform size ──────────────────────────────────────────────────────
+        # S × n_active × avg_prem / 100 = portfolio_cumulated_loss
+        # S = portfolio_cumulated_loss × 100 / (n_active × avg_prem)
+        # (portfolio_cumulated_loss here is a fraction: 0.70 means 70%)
+        if in_recovery and n_active > 0:
+            avg_prem = float(np.mean([base[t].loc[date, "prem_frac"] for t in active]))
+            denom    = avg_prem if avg_prem > 0 else FALLBACK_PREMIUM
+            uniform_size = min(MAX_SIZE, max(1, int(np.ceil(
+                portfolio_cumulated_loss / (n_active * denom / 100.0)
+            ))))
+        else:
+            uniform_size = 1
+
+        max_hit = uniform_size >= MAX_SIZE
+
+        # ── Compute this month's PnL ──────────────────────────────────────────
+        month_portfolio_pnl = 0.0
+
+        for ticker in base:
+            if date not in base[ticker].index:
+                continue
+            row    = base[ticker].loc[date]
+            trade  = bool(row["trade"])
+            ret    = float(row["return_frac"])
+            prem   = float(row["prem_frac"])
+            pnl_pu = float(row["pnl_pu_frac"])
+            size   = uniform_size if trade else 0
+
+            # Portfolio % contribution: size × pnl_pu / 100
+            contrib = size * pnl_pu / 100.0
+            month_portfolio_pnl   += contrib
+            stock_cum_pnl[ticker] += contrib
+
+            all_stock_rows[ticker].append({
+                "date":                  date,
+                "selling":               "put" if trade else "skip",
+                "prem_pct":              round(prem   * 100, 4),
+                "size":                  size,
+                "return_pct":            round(ret    * 100, 4),
+                "pnl_pu_pct":            round(pnl_pu * 100, 4),
+                "month_pnl_pct":         round(size * pnl_pu * 100, 4),
+                "cumulated_loss_pct":    round(portfolio_cumulated_loss * 100, 4),
+                "episode_cum_pnl_pct":   round(portfolio_episode_pnl   * 100, 4),
+                "total_cum_pnl_pct":     round(stock_cum_pnl[ticker]   * 100, 4),
+                "in_recovery":           in_recovery,
+                "max_size_hit":          max_hit,
+            })
+
+        # ── Update portfolio episode state ────────────────────────────────────
+        portfolio_episode_pnl += month_portfolio_pnl
+        portfolio_cum_pnl     += month_portfolio_pnl
+
+        if portfolio_episode_pnl >= 0.0:
+            portfolio_episode_pnl = 0.0
+
+        monthly_rows.append({
+            "date":                         date,
+            "monthly_return_pct":           round(month_portfolio_pnl        * 100, 4),
+            "cumulative_return_pct":        round(portfolio_cum_pnl          * 100, 4),
+            "capital_deployed":             round(uniform_size * n_active / 100.0, 2),
+            "num_stocks":                   len(base),
+            "num_stocks_trading":           n_active,
+            "uniform_size":                 uniform_size,
+            "portfolio_cumulated_loss_pct": round(portfolio_cumulated_loss   * 100, 4),
         })
 
-    portfolio_df = pd.DataFrame(rows)
+    portfolio_df  = pd.DataFrame(monthly_rows)
+    stock_results = {t: pd.DataFrame(rows) for t, rows in all_stock_rows.items() if rows}
     return stock_results, portfolio_df
 
 
@@ -551,25 +559,26 @@ def compute_summary(stock_results: dict[str, pd.DataFrame], portfolio_df: pd.Dat
 
 def print_monthly_table(portfolio_df: pd.DataFrame) -> None:
     """Print the month-by-month portfolio return table."""
-    print("\n" + "=" * 80)
+    print("\n" + "=" * 88)
     print("  MONTHLY PORTFOLIO RETURNS")
-    print("=" * 80)
+    print("=" * 88)
     hdr = (
         f"{'Month':<10}  {'Return%':>8}  {'Cum%':>8}  "
-        f"{'CapDeploy':>9}  {'Stocks':>6}  {'InRecov':>7}"
+        f"{'CapDeploy':>9}  {'Trading':>7}  {'UniSz':>5}  {'PortLoss%':>9}"
     )
     print(hdr)
-    print("-" * 80)
+    print("-" * 88)
     for _, row in portfolio_df.iterrows():
         date_str = row["date"].strftime("%Y-%m") if hasattr(row["date"], "strftime") else str(row["date"])[:7]
         print(
             f"{date_str:<10}  {row['monthly_return_pct']:>8.3f}  "
             f"{row['cumulative_return_pct']:>8.3f}  "
             f"{row['capital_deployed']:>9.2f}  "
-            f"{row['num_stocks']:>6}  "
-            f"{row['num_stocks_in_recovery']:>7}"
+            f"{row['num_stocks_trading']:>7}  "
+            f"{row['uniform_size']:>5}  "
+            f"{row['portfolio_cumulated_loss_pct']:>9.2f}"
         )
-    print("=" * 80)
+    print("=" * 88)
 
 
 def print_risk_stats(stats: dict) -> None:
@@ -602,17 +611,19 @@ def print_summary(summary: pd.DataFrame, portfolio_df: pd.DataFrame) -> None:
     print(f"  Premium source     : S3 real ATM options data (fallback {FALLBACK_PREMIUM*100:.1f}%)")
     print(f"  Backtest period    : {START_DATE}  →  {END_DATE}")
     print(f"  Universe           : top {TOP_N} SPX single equities")
-    print(f"  Capital model      : 1/100 per stock; recovery trades multiply that stock's capital")
-    print(f"  Sizing rule        : UP candle → sell PUT | DOWN → SKIP (wait)")
-    print(f"  Recovery sizing    : ceil(cumulated_loss / premium); reset when deficit cleared")
+    print(f"  Capital model      : 1/100 per stock; uniform size applied across all active stocks")
+    print(f"  Trade rule         : UP candle → sell PUT | DOWN → SKIP (wait)")
+    print(f"  Recovery sizing    : portfolio-level; uniform_size = ceil(port_loss% × 100 / (N × avg_prem%))")
     print("=" * 72)
     print(f"\nPORTFOLIO (1/100 capital per stock)")
     print(f"  Final cum return   : {port['final_cum_pnl_pct']:>8.2f} %")
     print(f"  Avg monthly return : {port['avg_monthly_pnl_pct']:>8.4f} %")
     print(f"  Win rate           : {port['win_rate_pct']:>8.1f} %")
     print(f"  Max drawdown       : {port['max_drawdown_pct']:>8.2f} %")
-    max_cap = portfolio_df["capital_deployed"].max()
-    print(f"  Max capital deploy : {max_cap:>8.2f}x  (leverage vs. base 1.0×)")
+    max_cap  = portfolio_df["capital_deployed"].max()
+    max_usiz = portfolio_df["uniform_size"].max()
+    print(f"  Max capital deploy : {max_cap:>8.2f}x  (uniform_size × stocks_trading / 100)")
+    print(f"  Max uniform size   : {max_usiz:>8}×")
     print()
     print("TOP 10 STOCKS (by total PnL % contribution to portfolio)")
     cols = ["ticker", "total_pnl_pct", "avg_monthly_pnl_pct", "avg_prem_pct",
