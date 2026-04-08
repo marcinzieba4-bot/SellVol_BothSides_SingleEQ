@@ -930,17 +930,45 @@ def main() -> None:
     print_monthly_table(portfolio_df)
     print_risk_stats(risk_stats)
 
-    # 5. Save outputs (1M strategy)
+    # 5. Save outputs
     print("\nSaving outputs …")
     summary.to_csv("summary.csv", index=False)
     portfolio_df.to_csv("portfolio_pnl.csv", index=False)
     save_history_csv(stock_results)
 
+    # Save buy_call trade histories
+    for key, fname in [("buy_call_1m", "history_buy_call_1m.csv"),
+                       ("buy_call_6m", "history_buy_call_6m.csv")]:
+        _, _, _, sr = all_results[key]
+        rows = []
+        for ticker, df in sr.items():
+            for _, row in df.iterrows():
+                sz  = int(row["size"])
+                ppu = float(row["pnl_pu_pct"])
+                rows.append({
+                    "date":                 row["date"],
+                    "ticker":               ticker,
+                    "side":                 row["selling"],
+                    "call_prem_pct":        row["prem_pct"],
+                    "size":                 sz,
+                    "return_pct":           row["return_pct"],
+                    "pnl_pu_pct":           ppu,
+                    "pnl_contribution_pct": round(sz * ppu / 100.0, 6),
+                    "in_recovery":          bool(row["in_recovery"]),
+                })
+        (pd.DataFrame(rows)
+           .sort_values(["date", "ticker"])
+           .reset_index(drop=True)
+           .to_csv(fname, index=False))
+        print(f"  {fname} written  ({len(rows):,} rows)")
+
     print("\nOutputs written:")
-    print("  summary.csv       — per-stock + portfolio summary (PUT-only 1M)")
-    print("  portfolio_pnl.csv — monthly returns (PUT-only 1M)")
-    print("  history.csv       — full trade history (PUT-only 1M)")
-    print("  portfolio_{key}.csv for each of the 6 strategy variants")
+    print("  summary.csv              — per-stock + portfolio summary (sell-put 1M)")
+    print("  portfolio_pnl.csv        — monthly returns (sell-put 1M)")
+    print("  history.csv              — trade history  (sell-put 1M)")
+    print("  history_buy_call_1m.csv  — trade history  (buy-call  1M)")
+    print("  history_buy_call_6m.csv  — trade history  (buy-call  6M)")
+    print("  portfolio_{key}.csv      — monthly returns for all 4 variants")
 
 
 if __name__ == "__main__":
