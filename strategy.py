@@ -37,6 +37,7 @@ MAX_SIZE         = 5_000     # safety cap on position size (units)
 MAX_LEVERAGE     = 5.0       # max total capital deployed (uniform_size×n_active/100)
 TARGET_DTE       = 30        # standardise all premiums to this DTE
 ASSUMED_DTE      = 25        # fallback DTE if not present in S3 data
+VIX_CUTOFF       = pd.Period("2020-09", "M")   # real S3 data starts here; scale proxy premiums before this
 
 import os
 AWS_KEY    = os.environ["AWS_ACCESS_KEY_ID"]
@@ -187,11 +188,61 @@ def load_s3_premiums() -> dict[str, dict[str, dict]]:
     return premiums
 
 
+def fetch_vix_scale(cutoff: pd.Period = VIX_CUTOFF) -> tuple[dict, float]:
+    """
+    Download monthly VIX (^VIX) and build a premium scaling dict for months
+    before `cutoff` (where real S3 data is unavailable).
+
+    scale_factor(t) = VIX(t) / VIX(cutoff)
+
+    Returns (vix_scale_dict, vix_at_cutoff).
+    """
+    print(f"Downloading VIX for premium scaling (anchor = {cutoff}) …")
+    raw = yf.download("^VIX", start=START_DATE, end=END_DATE,
+                      interval="1mo", auto_adjust=False, progress=False)
+    if isinstance(raw.columns, pd.MultiIndex):
+        close = raw["Close"].iloc[:, 0]
+    else:
+        close = raw["Close"]
+
+    close.index = pd.to_datetime(close.index)
+    monthly = close.resample("ME").last()
+    monthly.index = monthly.index.to_period("M")
+    monthly = monthly.dropna()
+
+    # Anchor VIX value at cutoff (try nearby months if exact not available)
+    vix_anchor = None
+    for offset in [0, 1, -1, 2, -2]:
+        adj = cutoff + offset
+        if adj in monthly.index:
+            vix_anchor = float(monthly[adj])
+            if offset != 0:
+                print(f"  VIX at {cutoff} not found; using {adj}")
+            break
+
+    if vix_anchor is None or np.isnan(vix_anchor):
+        raise RuntimeError(f"Cannot determine VIX at {cutoff}")
+
+    print(f"  VIX anchor ({cutoff}): {vix_anchor:.2f}")
+
+    vix_scale: dict = {}
+    for period in monthly.index:
+        if period < cutoff:
+            sf = float(monthly[period]) / vix_anchor
+            vix_scale[period] = sf
+            # debug: uncomment to inspect
+            # print(f"    {period}: VIX={monthly[period]:.1f}  scale={sf:.3f}")
+
+    print(f"  → VIX scaling built for {len(vix_scale)} months before {cutoff}")
+    return vix_scale, vix_anchor
+
+
 def get_premium(
     premiums: dict,
     ticker: str,
     month: "pd.Period",
     side: str,          # 'put' or 'call'
+    vix_scale: "dict | None" = None,
 ) -> float:
     """
     Return the ATM premium fraction for (ticker, month, side).
@@ -201,6 +252,10 @@ def get_premium(
       2. Exact ticker average (month outside S3 range)
       3. Proxy ticker (same sector, in S3) — exact month then avg
       4. Global fallback constant FALLBACK_PREMIUM
+
+    If vix_scale is provided, premiums for months before VIX_CUTOFF are
+    multiplied by VIX(month) / VIX(cutoff) to reflect the vol environment
+    at the time (lower vol → lower premium, higher vol → higher premium).
     """
     def _from_rec(rec, m):
         if m in rec.get(side, {}):
@@ -214,17 +269,30 @@ def get_premium(
     if ticker in premiums:
         v = _from_rec(premiums[ticker], month)
         if v is not None:
-            return v
+            prem = v
+        else:
+            prem = None
+    else:
+        prem = None
 
     # 3: proxy
-    proxy = PROXY_MAP.get(ticker)
-    if proxy and proxy in premiums:
-        v = _from_rec(premiums[proxy], month)
-        if v is not None:
-            return v
+    if prem is None:
+        proxy = PROXY_MAP.get(ticker)
+        if proxy and proxy in premiums:
+            v = _from_rec(premiums[proxy], month)
+            if v is not None:
+                prem = v
 
     # 4: fallback
-    return FALLBACK_PREMIUM
+    if prem is None:
+        prem = FALLBACK_PREMIUM
+
+    # VIX scaling for pre-cutoff months (proxy/fallback premiums are calibrated
+    # to the 2020-09 vol environment; scale to the actual vol at the time)
+    if vix_scale is not None and month in vix_scale:
+        prem *= vix_scale[month]
+
+    return prem
 
 
 # ── Data Fetching ──────────────────────────────────────────────────────────────
@@ -306,6 +374,7 @@ def _get_stock_monthly_data(
     premiums: dict,
     signal: str = "1m",
     strategy_mode: str = "put_only",
+    vix_scale: "dict | None" = None,
 ) -> pd.DataFrame:
     """
     Scan monthly returns and compute per-unit base metrics — no sizing.
@@ -346,12 +415,12 @@ def _get_stock_monthly_data(
 
         # Side + PnL per unit
         if strategy_mode == "sell_put" and bullish:
-            prem   = get_premium(premiums, ticker, month, "put")
+            prem   = get_premium(premiums, ticker, month, "put", vix_scale=vix_scale)
             pnl_pu = prem + min(r, 0.0)            # collect premium, lose on drops
             records.append({"date": date, "trade": True,  "side": "sell_put",
                              "prem_frac": prem, "return_frac": r, "pnl_pu_frac": pnl_pu})
         elif strategy_mode == "buy_call" and bullish:
-            prem   = get_premium(premiums, ticker, month, "call")
+            prem   = get_premium(premiums, ticker, month, "call", vix_scale=vix_scale)
             pnl_pu = max(r, 0.0) - prem            # pay premium, profit on rallies
             records.append({"date": date, "trade": True,  "side": "buy_call",
                              "prem_frac": prem, "return_frac": r, "pnl_pu_frac": pnl_pu})
@@ -371,6 +440,7 @@ def run_portfolio(
     signal: str = "1m",
     strategy_mode: str = "put_only",
     yearly_universe: "dict[int, set] | None" = None,
+    vix_scale: "dict | None" = None,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """
     Portfolio-level recovery sizing with point-in-time universe support.
@@ -378,6 +448,7 @@ def run_portfolio(
     signal          — direction filter: '1m', '6m', or 'none'
     strategy_mode   — 'sell_put' or 'buy_call'
     yearly_universe — {year: set(tickers)}; None = all tickers every year
+    vix_scale       — {Period: scale_factor} for pre-VIX_CUTOFF months
 
     Each month:
       • Only tickers in yearly_universe[year] that pass the signal trade.
@@ -391,6 +462,7 @@ def run_portfolio(
         df = _get_stock_monthly_data(
             ticker, closes[ticker], premiums,
             signal=signal, strategy_mode=strategy_mode,
+            vix_scale=vix_scale,
         )
         if not df.empty:
             base[ticker] = df.set_index("date")
@@ -820,6 +892,7 @@ def compare_strategies(
     closes: pd.DataFrame,
     premiums: dict,
     yearly_universe: "dict[int, set] | None" = None,
+    vix_scale: "dict | None" = None,
 ) -> dict:
     """
     Compare PUT-only, CALL-only, and BOTH-SIDES strategies (all with 1M momentum).
@@ -846,6 +919,7 @@ def compare_strategies(
             signal=signal,
             strategy_mode=mode,
             yearly_universe=yearly_universe,
+            vix_scale=vix_scale,
         )
         risk = compute_risk_stats(portfolio_df)
         all_results[key] = (label, portfolio_df, risk, stock_results)
@@ -917,8 +991,15 @@ def main() -> None:
     all_tickers = sorted({t for s in yearly_universe.values() for t in s})
     closes = fetch_monthly_prices(all_tickers, START_DATE, END_DATE)
 
-    # 3. Run all three strategy variants and print comparison
-    all_results = compare_strategies(closes, premiums, yearly_universe=yearly_universe)
+    # 2b. VIX-based premium scaling for pre-2020-09 months
+    vix_scale, vix_anchor = fetch_vix_scale()
+
+    # 3. Run all strategy variants and print comparison
+    all_results = compare_strategies(
+        closes, premiums,
+        yearly_universe=yearly_universe,
+        vix_scale=vix_scale,
+    )
 
     # 4. Detailed output for PUT-only 1M-momentum variant (primary strategy)
     label, portfolio_df, risk_stats, stock_results = all_results["sell_put_1m"]
