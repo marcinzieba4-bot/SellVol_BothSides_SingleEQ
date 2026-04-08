@@ -51,85 +51,57 @@ PROXY_MAP = {
     # Semiconductors / hardware
     "AMD":    "NVDA",  "MU":    "NVDA",  "AMAT":  "AVGO",
     "KLAC":   "AVGO",  "LRCX":  "AVGO",  "TXN":   "AVGO",
-    "ADI":    "AVGO",  "QCOM":  "QCOM",  "APH":   "AVGO",
-    # Large-cap tech / software
+    "ADI":    "AVGO",  "QCOM":  "AVGO",  "APH":   "AVGO",
+    "INTC":   "AVGO",
+    # Large-cap tech / software / IT services
     "ADBE":   "MSFT",  "ADP":   "IBM",   "CSCO":  "IBM",
-    "PANW":   "CRM",   "FI":    "MA",
+    "PANW":   "CRM",   "FI":    "MA",    "FISV":  "MA",
+    "CTSH":   "IBM",   "EMC":   "IBM",   "ATVI":  "MSFT",
     # Consumer / retail
     "MCD":    "KO",    "NKE":   "NKE",   "LOW":   "HD",
     "TJX":    "WMT",   "MDLZ":  "PEP",   "PM":    "PEP",
+    "SBUX":   "KO",    "TGT":   "WMT",   "WBA":   "WMT",
+    "GIS":    "PEP",   "CL":    "PG",    "MO":    "PEP",
     # Healthcare
     "BMY":    "ABBV",  "AMGN":  "ABBV",  "GILD":  "ABBV",
     "REGN":   "ABBV",  "VRTX":  "ABBV",  "ZTS":   "ABBV",
+    "BIIB":   "ABBV",  "CELG":  "ABBV",  "AGN":   "ABBV",
+    "PFE":    "ABBV",  "MDT":   "ABT",
     "BSX":    "ABT",   "DHR":   "ABT",   "ISRG":  "ABT",
     "SYK":    "ABT",   "ELV":   "UNH",   "CI":    "UNH",
+    "EW":     "ABT",   "BDX":   "ABT",   "HUM":   "UNH",
+    "ESRX":   "UNH",   "CVS":   "UNH",
     # Financials
     "GS":     "JPM",   "MS":    "JPM",   "BLK":   "JPM",
     "SCHW":   "JPM",   "AXP":   "MA",    "SPGI":  "JPM",
     "MCO":    "JPM",   "CME":   "JPM",   "CB":    "JPM",
-    "PGR":    "JPM",
-    # Industrials / materials  (use XOM ~3% or IBM ~2.8%, NOT SPY 1.7%)
+    "PGR":    "JPM",   "USB":   "JPM",   "AIG":   "JPM",
+    "MET":    "JPM",   "PRU":   "JPM",   "SQ":    "MA",
+    "PYPL":   "MA",
+    # Industrials / materials
     "GE":     "XOM",   "CAT":   "XOM",   "HON":   "IBM",
-    "RTX":    "XOM",   "UNP":   "XOM",   "DE":    "XOM",
+    "RTX":    "XOM",   "UTX":   "XOM",   "RTN":   "XOM",
+    "UNP":    "XOM",   "DE":    "XOM",   "NOC":   "XOM",
+    "LMT":    "XOM",   "FDX":   "IBM",   "UPS":   "IBM",
     "ETN":    "XOM",   "EMR":   "XOM",   "ITW":   "IBM",
     "LIN":    "ABT",   "SHW":   "IBM",   "ECL":   "PG",
-    "APH":    "IBM",
-    # Utilities / real estate  (use KO ~1.9% — low vol, similar to utilities)
+    "APH":    "IBM",   "MMM":   "IBM",   "DD":    "IBM",
+    "GM":     "XOM",   "F":     "XOM",
+    # Energy
+    "CVX":    "XOM",   "COP":   "XOM",   "EOG":   "XOM",
+    "SLB":    "XOM",   "HAL":   "XOM",   "DOW":   "XOM",
+    "LYB":    "XOM",   "MON":   "XOM",
+    # Utilities / real estate
     "NEE":    "KO",    "DUK":   "KO",    "SO":    "KO",
-    "CEG":    "XOM",   "PLD":   "IBM",
+    "PPL":    "KO",    "CEG":   "XOM",
+    "PLD":    "IBM",   "AMT":   "IBM",   "SPG":   "IBM",
+    "EQIX":   "IBM",
     # Telecom / media
-    "T":      "CMCSA", "DIS":   "DIS",
+    "T":      "CMCSA", "VZ":    "CMCSA", "TMUS":  "CMCSA",
+    "CHTR":   "CMCSA", "DIS":   "DIS",   "TWX":   "CMCSA",
     # Other
-    "BRK-B":  "SPY",   "PYPL":  "MA",
-    # Historical large caps added for survivorship-bias fix
-    "INTC":   "AVGO",  # semiconductor peer
-    "VZ":     "CMCSA", # telecom peer
-    "WBA":    "WMT",   # retail/pharmacy
-    "CVS":    "UNH",   # healthcare services
-    "MO":     "PEP",   # defensive consumer
-    "UPS":    "IBM",   # industrials/logistics
-    "MMM":    "IBM",   # industrials
-    "GM":     "XOM",   # cyclical industrial
-    "F":      "XOM",   # cyclical industrial
-    "USB":    "JPM",   # regional bank → financials proxy
-    "SBUX":   "KO",    # consumer discretionary/staples
-    "TGT":    "WMT",   # retail
+    "BRK-B":  "SPY",
 }
-
-# ── Broader universe for point-in-time top-100 selection ──────────────────────
-# Includes 2024 large caps + historical large caps that have since fallen out.
-# This prevents survivorship bias from locking in the 2024 winner list.
-EXTRA_HISTORICAL = [
-    "INTC",   # Intel — was top-10 in 2015 (~$155B), now fallen
-    "VZ",     # Verizon — consistently top-20 (~$180-200B) but not in 2024 list
-    "WBA",    # Walgreens — was ~$90B (2015-18), now tiny
-    "CVS",    # CVS Health — was ~$100B, healthcare conglomerate
-    "MO",     # Altria — was ~$120B, defensive tobacco
-    "UPS",    # UPS — was ~$90B logistics
-    "MMM",    # 3M — was ~$100B (2015-19), now fallen
-    "GM",     # General Motors — was ~$55B cyclical
-    "F",      # Ford — was ~$50B cyclical
-    "USB",    # US Bancorp — was ~$75B regional bank
-    "SBUX",   # Starbucks — was ~$70B, now borderline top-100
-    "TGT",    # Target — was ~$45-100B retail
-]
-
-# Top-100 S&P 500 names by approximate market cap (2024)
-TOP100_TICKERS = [
-    "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "GOOG", "BRK-B",
-    "LLY",  "AVGO", "JPM",  "TSLA", "UNH",  "V",     "XOM",  "MA",
-    "JNJ",  "PG",   "COST", "HD",   "MRK",  "ABBV",  "CVX",  "CRM",
-    "WMT",  "BAC",  "NFLX", "AMD",  "ORCL", "KO",    "PEP",  "ACN",
-    "LIN",  "ADBE", "TMO",  "MCD",  "CSCO", "ABT",   "GE",   "CAT",
-    "IBM",  "INTU", "PM",   "WFC",  "GS",   "AXP",   "AMGN", "DHR",
-    "ISRG", "TXN",  "SPGI", "BKNG", "SYK",  "BLK",   "UNP",  "RTX",
-    "NOW",  "NEE",  "HON",  "VRTX", "MS",   "LOW",   "AMAT", "C",
-    "PLD",  "LRCX", "ADP",  "T",    "BMY",  "ETN",   "PANW", "SCHW",
-    "BSX",  "MU",   "DE",   "GILD", "ELV",  "ADI",   "MMC",  "CB",
-    "SO",   "MDLZ", "ZTS",  "REGN", "BA",   "PGR",   "DUK",  "CI",
-    "SHW",  "CME",  "MCO",  "CEG",  "TJX",  "KLAC",  "EMR",  "APH",
-    "FI",   "PYPL", "ITW",  "ECL",
-]
 
 # ── S3 Premium Loading ─────────────────────────────────────────────────────────
 
@@ -282,64 +254,42 @@ def fetch_monthly_prices(tickers: list[str], start: str, end: str) -> pd.DataFra
 
 # ── Point-in-Time Universe ─────────────────────────────────────────────────────
 
-def build_yearly_universes(
-    closes: pd.DataFrame,
-    n: int = TOP_N,
-) -> dict[int, set]:
+# Ticker remaps: old symbol → current yfinance symbol
+_TICKER_REMAP = {
+    "BRK.B": "BRK-B",   # yfinance uses dash
+    "FB":    "META",     # Facebook → Meta (Oct 2021)
+    "ANTM":  "ELV",      # Anthem → Elevance Health (Jun 2022)
+    "FISV":  "FI",       # Fiserv ticker change (2023)
+}
+
+
+def load_yearly_universes(txt_dir: str = ".") -> dict[int, set[str]]:
     """
-    For each year in the backtest, determine which tickers were in the top-N
-    by approximate market cap at 31-Jan of that year.
+    Load per-year top-100 S&P 500 universes from {year}.txt files.
 
-    Market-cap proxy = price_at_jan_end × current_shares_outstanding.
-    Using current shares is an approximation; shares change slowly (<15% over
-    10 years for most large caps) so the ranking is still far more accurate than
-    using the 2024 market-cap ranking for the entire backtest.
-
-    Tickers with no price data at year-start (e.g. CEG spun off in 2022) are
-    naturally excluded from early years.
+    Each file has lines like:  Apple (AAPL)
+    Returns {year: set_of_tickers} for every year that has a file.
+    Applies _TICKER_REMAP to normalise renamed/delisted symbols.
     """
-    print("Building point-in-time universes …")
-
-    # Fetch current shares outstanding once per ticker
-    shares: dict[str, float] = {}
-    print("  Fetching shares outstanding (current, used as proxy) …")
-    for ticker in closes.columns:
-        try:
-            fi = yf.Ticker(ticker).fast_info
-            sh = getattr(fi, "shares", None)
-            if sh and sh > 0:
-                shares[ticker] = float(sh)
-        except Exception:
-            pass
-    print(f"  Got shares for {len(shares)} / {len(closes.columns)} tickers")
-
-    start_year = int(START_DATE[:4])
-    end_year   = int(END_DATE[:4])
-    yearly: dict[int, set] = {}
-
-    for year in range(start_year, end_year + 1):
-        jan_end = f"{year}-01-31"
-        mask = closes.index <= jan_end
-        if not mask.any():
-            yearly[year] = set()
+    import re
+    universes: dict[int, set[str]] = {}
+    for year in range(int(START_DATE[:4]), int(END_DATE[:4]) + 1):
+        path = os.path.join(txt_dir, f"{year}.txt")
+        if not os.path.exists(path):
+            print(f"  Warning: {path} not found — skipping year {year}")
             continue
-
-        jan_prices = closes.loc[mask].iloc[-1]   # last price on/before Jan 31
-
-        mcap: dict[str, float] = {}
-        for ticker in closes.columns:
-            price = jan_prices.get(ticker, float("nan"))
-            sh    = shares.get(ticker, 0.0)
-            if not pd.isna(price) and sh > 0 and price > 0:
-                mcap[ticker] = price * sh
-
-        top_n = sorted(mcap, key=mcap.get, reverse=True)[:n]
-        yearly[year] = set(top_n)
-
-        top5 = ", ".join(top_n[:5])
-        print(f"  {year}: {len(top_n)} stocks  top-5: {top5}")
-
-    return yearly
+        tickers: set[str] = set()
+        with open(path) as fh:
+            for line in fh:
+                m = re.search(r'\(([^)]+)\)', line.strip())
+                if m:
+                    t = m.group(1).strip()
+                    t = _TICKER_REMAP.get(t, t)
+                    tickers.add(t)
+        universes[year] = tickers
+        top5 = list(tickers)[:5]
+        print(f"  {year}: {len(tickers)} stocks")
+    return universes
 
 
 # ── Strategy Simulation ────────────────────────────────────────────────────────
@@ -955,14 +905,13 @@ def main() -> None:
         trace_stock(ticker, premiums)
         return
 
-    # ── Broader universe: 2024 top-100 + historical large caps ───────────────
-    broader = list(dict.fromkeys(TOP100_TICKERS + EXTRA_HISTORICAL))
+    # 1. Load exact historical top-100 universes from {year}.txt files
+    print("Loading point-in-time universes from year files …")
+    yearly_universe = load_yearly_universes()
 
-    # 1. Fetch price data for broader universe
-    closes = fetch_monthly_prices(broader, START_DATE, END_DATE)
-
-    # 2. Build point-in-time universes (top-100 per year)
-    yearly_universe = build_yearly_universes(closes, n=TOP_N)
+    # 2. Fetch prices for the union of all yearly universes
+    all_tickers = sorted({t for s in yearly_universe.values() for t in s})
+    closes = fetch_monthly_prices(all_tickers, START_DATE, END_DATE)
 
     # 3. Run all three strategy variants and print comparison
     all_results = compare_strategies(closes, premiums, yearly_universe=yearly_universe)
