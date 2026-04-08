@@ -34,6 +34,7 @@ START_DATE       = "2015-01-01"
 END_DATE         = "2024-12-31"
 TOP_N            = 100
 MAX_SIZE         = 5_000     # safety cap on position size (units)
+MAX_LEVERAGE     = 5.0       # max total capital deployed (uniform_size×n_active/100)
 TARGET_DTE       = 30        # standardise all premiums to this DTE
 ASSUMED_DTE      = 25        # fallback DTE if not present in S3 data
 
@@ -177,10 +178,18 @@ def load_s3_premiums() -> dict[str, dict[str, dict]]:
                     df["prem_frac"] = df["entry_premium"] / df["stock_price"]
 
                     # ── DTE scaling: normalise premium to TARGET_DTE days ─────
-                    dte_col = next((c for c in df.columns
-                                    if c.lower() in ("dte", "days_to_expiry", "days_to_exp")), None)
+                    # Prefer dte_at_obs (actual DTE at observation) over 'dte'
+                    # which in some datasets stores a negative epoch offset.
+                    dte_col = None
+                    for _cand in ("dte_at_obs", "dte_at_observation",
+                                  "days_to_expiry", "days_to_exp", "dte"):
+                        if _cand in df.columns:
+                            dte_col = _cand
+                            break
                     if dte_col:
-                        df["_dte"] = pd.to_numeric(df[dte_col], errors="coerce").fillna(ASSUMED_DTE)
+                        raw_dte = pd.to_numeric(df[dte_col], errors="coerce")
+                        # Only use positive DTE values; fall back to ASSUMED_DTE otherwise
+                        df["_dte"] = raw_dte.where(raw_dte > 0, ASSUMED_DTE).fillna(ASSUMED_DTE)
                     else:
                         df["_dte"] = ASSUMED_DTE
                     # formula: prem_scaled = prem_raw × (1 + 0.4 × (TARGET/DTE − 1))
@@ -463,6 +472,10 @@ def run_portfolio(
             uniform_size = min(MAX_SIZE, max(1, int(np.ceil(
                 portfolio_cumulated_loss / (n_active * denom / 100.0)
             ))))
+            # Hard cap: total capital deployed ≤ MAX_LEVERAGE × 100%
+            # uniform_size × n_active / 100 ≤ MAX_LEVERAGE
+            leverage_cap = max(1, int(np.floor(MAX_LEVERAGE * 100 / n_active)))
+            uniform_size = min(uniform_size, leverage_cap)
         else:
             uniform_size = 1
 
