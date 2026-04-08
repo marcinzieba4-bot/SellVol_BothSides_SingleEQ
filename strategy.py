@@ -305,16 +305,22 @@ def _get_stock_monthly_data(
     prices: pd.Series,
     premiums: dict,
     signal: str = "1m",
+    strategy_mode: str = "put_only",
 ) -> pd.DataFrame:
     """
     Scan monthly returns and compute per-unit base metrics — no sizing.
 
     signal:
-      '1m'  — trade when previous 1-month candle was UP  (original rule)
-      '6m'  — trade when 6-month return ending prior month was positive
-      'none' — always trade regardless of direction
+      '1m'   — direction = previous 1-month candle direction
+      '6m'   — direction = 6-month return sign ending prior month
+      'none' — always bullish (treat as UP)
 
-    Returns one row per month: date, trade, prem_frac, return_frac, pnl_pu_frac.
+    strategy_mode:
+      'put_only'  — sell PUT when bullish, skip when bearish
+      'call_only' — sell CALL when bearish, skip when bullish
+      'both'      — sell PUT when bullish, sell CALL when bearish (always plays)
+
+    Returns one row per month: date, trade, side, prem_frac, return_frac, pnl_pu_frac.
     """
     prices = prices.dropna()
     if len(prices) < 3:
@@ -322,8 +328,6 @@ def _get_stock_monthly_data(
 
     returns_1m = prices.pct_change().dropna()
     n          = len(returns_1m)
-    # prices_arr[i] is the closing price BEFORE returns_1m[i]
-    # (returns_1m starts at prices[1], so prices_arr[i] = prices.values[i])
     prices_arr = prices.values
     records    = []
     prev_up_1m = True
@@ -333,22 +337,30 @@ def _get_stock_monthly_data(
         date  = returns_1m.index[i]
         month = pd.Period(date, "M")
 
+        # Direction signal
         if signal == "1m":
-            trade = prev_up_1m
+            bullish = prev_up_1m
         elif signal == "6m":
-            # 6m return ending at prior month: prices_arr[i] / prices_arr[i-6] - 1
-            trade = bool(prices_arr[i] >= prices_arr[i - 6]) if i >= 6 else True
+            bullish = bool(prices_arr[i] >= prices_arr[i - 6]) if i >= 6 else True
         else:   # 'none'
-            trade = True
+            bullish = True
 
-        if trade:
-            prem   = get_premium(premiums, ticker, month, "put")
-            pnl_pu = prem + min(r, 0.0)
-            records.append({"date": date, "trade": True,
+        # Side selection
+        if strategy_mode == "put_only":
+            side = "put" if bullish else "skip"
+        elif strategy_mode == "call_only":
+            side = "call" if not bullish else "skip"
+        else:   # 'both'
+            side = "put" if bullish else "call"
+
+        if side != "skip":
+            prem   = get_premium(premiums, ticker, month, side)
+            pnl_pu = (prem + min(r, 0.0)) if side == "put" else (prem - max(r, 0.0))
+            records.append({"date": date, "trade": True,  "side": side,
                              "prem_frac": prem, "return_frac": r, "pnl_pu_frac": pnl_pu})
         else:
-            records.append({"date": date, "trade": False,
-                             "prem_frac": 0.0, "return_frac": r, "pnl_pu_frac": 0.0})
+            records.append({"date": date, "trade": False, "side": "skip",
+                             "prem_frac": 0.0,  "return_frac": r, "pnl_pu_frac": 0.0})
         prev_up_1m = (r >= 0.0)
 
     return pd.DataFrame(records)
@@ -360,26 +372,29 @@ def run_portfolio(
     closes: pd.DataFrame,
     premiums: dict,
     signal: str = "1m",
+    strategy_mode: str = "put_only",
     yearly_universe: "dict[int, set] | None" = None,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """
     Portfolio-level recovery sizing with point-in-time universe support.
 
-    signal        — momentum filter: '1m', '6m', or 'none'
-    yearly_universe — {year: set(tickers)} from build_yearly_universes().
-                    If None, all tickers in closes are used every year.
+    signal          — direction filter: '1m', '6m', or 'none'
+    strategy_mode   — 'put_only', 'call_only', or 'both'
+    yearly_universe — {year: set(tickers)}; None = all tickers every year
 
     Each month:
-      • Only tickers in yearly_universe[year] are considered.
-      • Among those, stocks eligible by the momentum signal trade (sell put).
-      • uniform_size = ceil(portfolio_loss% × 100 / (n_active × avg_prem%))
-        so one good premium month clears the portfolio deficit.
+      • Only tickers in yearly_universe[year] that pass the signal trade.
+      • uniform_size = ceil(deficit / (n_active × avg_prem / 100)) × 2
+        so one good month clears the deficit AND earns the same as profit.
       • portfolio_episode_pnl resets to 0 when deficit is cleared.
     """
     # Step 1: per-stock base data (direction + per-unit PnL, no sizing)
     base: dict[str, pd.DataFrame] = {}
     for ticker in closes.columns:
-        df = _get_stock_monthly_data(ticker, closes[ticker], premiums, signal=signal)
+        df = _get_stock_monthly_data(
+            ticker, closes[ticker], premiums,
+            signal=signal, strategy_mode=strategy_mode,
+        )
         if not df.empty:
             base[ticker] = df.set_index("date")
 
@@ -450,7 +465,7 @@ def run_portfolio(
 
             all_stock_rows[ticker].append({
                 "date":                  date,
-                "selling":               "put" if trade else "skip",
+                "selling":               row["side"],
                 "prem_pct":              round(prem   * 100, 4),
                 "size":                  size,
                 "return_pct":            round(ret    * 100, 4),
@@ -810,80 +825,77 @@ def compare_strategies(
     yearly_universe: "dict[int, set] | None" = None,
 ) -> dict:
     """
-    Run three momentum-filter variants and print a side-by-side comparison.
-
-    Variants:
-      no_filter — always sell PUT (no momentum condition)
-      mom_1m    — sell PUT only when previous 1-month candle was UP
-      mom_6m    — sell PUT only when 6-month return (ending prior month) > 0
+    Compare PUT-only, CALL-only, and BOTH-SIDES strategies (all with 1M momentum).
+    Also runs no-filter PUT-only as a baseline.
 
     Returns dict: key → (label, portfolio_df, risk_stats, stock_results)
     """
+    # (key, signal, strategy_mode, label)
     configs = [
-        ("no_filter", "none", "No momentum filter (always sell PUT)"),
-        ("mom_1m",    "1m",   "1M momentum: sell PUT if prev month UP"),
-        ("mom_6m",    "6m",   "6M momentum: sell PUT if 6m return > 0"),
+        ("put_1m",  "1m", "put_only",  "PUT only  | 1M mom: sell PUT  when prev UP"),
+        ("call_1m", "1m", "call_only", "CALL only | 1M mom: sell CALL when prev DOWN"),
+        ("both_1m", "1m", "both",      "BOTH      | 1M mom: PUT if UP, CALL if DOWN"),
+        ("put_6m",  "6m", "put_only",  "PUT only  | 6M mom: sell PUT  when 6m > 0"),
+        ("call_6m", "6m", "call_only", "CALL only | 6M mom: sell CALL when 6m < 0"),
+        ("both_6m", "6m", "both",      "BOTH      | 6M mom: PUT if 6m>0, CALL if 6m<0"),
     ]
 
     all_results: dict = {}
 
-    for key, signal, label in configs:
-        print(f"\n{'─'*60}")
+    for key, signal, mode, label in configs:
+        print(f"\n{'─'*62}")
         print(f"  Running: {label}")
-        print(f"{'─'*60}")
+        print(f"{'─'*62}")
         stock_results, portfolio_df = run_portfolio(
             closes, premiums,
             signal=signal,
+            strategy_mode=mode,
             yearly_universe=yearly_universe,
         )
         risk = compute_risk_stats(portfolio_df)
         all_results[key] = (label, portfolio_df, risk, stock_results)
-        print(f"  → Done. Ann return: {risk['ann_return_pct']:.2f}%  "
+        print(f"  → Ann return: {risk['ann_return_pct']:.2f}%  "
               f"Sharpe: {risk['sharpe_4pct_rf']:.3f}  "
               f"MaxDD: {risk['max_drawdown_pct']:.2f}%")
-
-        # Save per-strategy portfolio CSV
         portfolio_df.to_csv(f"portfolio_{key}.csv", index=False)
 
     # ── Comparison table ──────────────────────────────────────────────────────
-    print("\n" + "=" * 100)
-    print("  STRATEGY COMPARISON  —  sell PUT only (3 momentum filters)")
-    print("=" * 100)
-
-    col_w = 36
+    col_w = 46
     hdr_fields = [
-        ("Strategy",     col_w),
-        ("AnnRet%",       8),
-        ("AnnVol%",       8),
-        ("Sharpe",        7),
-        ("Sortino",       7),
-        ("MaxDD%",        7),
-        ("Calmar",        7),
-        ("Win%",          6),
-        ("Best%",         7),
-        ("Worst%",        7),
+        ("Strategy",   col_w),
+        ("AnnRet%",     8), ("AnnVol%",  8),
+        ("Sharpe",      7), ("Sortino",  7),
+        ("MaxDD%",      7), ("Calmar",   7),
+        ("Win%",        6), ("Best%",    7), ("Worst%",  7),
     ]
-    header = "".join(f"{name:>{w}}" for name, w in hdr_fields)
-    print(header)
-    print("-" * len(header))
+    header = "".join(f"{n:>{w}}" for n, w in hdr_fields)
+    sep    = "=" * len(header)
 
-    for key, signal, label in configs:
-        _, _, risk, _ = all_results[key]
-        row = (
-            f"{label:<{col_w}}"
-            f"{risk['ann_return_pct']:>{8}.2f}"
-            f"{risk['ann_vol_pct']:>{8}.2f}"
-            f"{risk['sharpe_4pct_rf']:>{7}.3f}"
-            f"{risk['sortino_4pct_rf']:>{7}.3f}"
-            f"{risk['max_drawdown_pct']:>{7}.2f}"
-            f"{risk['calmar']:>{7}.3f}"
-            f"{risk['win_rate_pct']:>{6}.1f}"
-            f"{risk['best_month_pct']:>{7}.2f}"
-            f"{risk['worst_month_pct']:>{7}.2f}"
-        )
-        print(row)
-
-    print("=" * 100)
+    for group, title in [
+        (["put_1m", "call_1m", "both_1m"], "1M MOMENTUM"),
+        (["put_6m", "call_6m", "both_6m"], "6M MOMENTUM"),
+    ]:
+        print(f"\n{sep}")
+        print(f"  STRATEGY COMPARISON — {title}  (2× recovery sizing, no leverage cap)")
+        print(sep)
+        print(header)
+        print("-" * len(header))
+        for key in group:
+            _, _, risk, _ = all_results[key]
+            label = all_results[key][0]
+            print(
+                f"{label:<{col_w}}"
+                f"{risk['ann_return_pct']:>{8}.2f}"
+                f"{risk['ann_vol_pct']:>{8}.2f}"
+                f"{risk['sharpe_4pct_rf']:>{7}.3f}"
+                f"{risk['sortino_4pct_rf']:>{7}.3f}"
+                f"{risk['max_drawdown_pct']:>{7}.2f}"
+                f"{risk['calmar']:>{7}.3f}"
+                f"{risk['win_rate_pct']:>{6}.1f}"
+                f"{risk['best_month_pct']:>{7}.2f}"
+                f"{risk['worst_month_pct']:>{7}.2f}"
+            )
+        print(sep)
 
     return all_results
 
@@ -913,8 +925,8 @@ def main() -> None:
     # 3. Run all three strategy variants and print comparison
     all_results = compare_strategies(closes, premiums, yearly_universe=yearly_universe)
 
-    # 4. Detailed output for the 1M-momentum variant (primary strategy)
-    label, portfolio_df, risk_stats, stock_results = all_results["mom_1m"]
+    # 4. Detailed output for PUT-only 1M-momentum variant (primary strategy)
+    label, portfolio_df, risk_stats, stock_results = all_results["put_1m"]
     print(f"\n{'='*72}")
     print(f"  DETAILED RESULTS — {label}")
     print(f"{'='*72}")
@@ -929,28 +941,11 @@ def main() -> None:
     portfolio_df.to_csv("portfolio_pnl.csv", index=False)
     save_history_csv(stock_results)
 
-    # Also save no_filter and 6m stock results
-    _, pf_nf, _, sr_nf = all_results["no_filter"]
-    save_history_csv.__wrapped__ = None  # no-op attribute
-    pd.concat(
-        [df.assign(ticker=t) for t, df in sr_nf.items()],
-        ignore_index=True,
-    ).sort_values(["date", "ticker"]).to_csv("history_no_filter.csv", index=False)
-
-    _, pf_6m, _, sr_6m = all_results["mom_6m"]
-    pd.concat(
-        [df.assign(ticker=t) for t, df in sr_6m.items()],
-        ignore_index=True,
-    ).sort_values(["date", "ticker"]).to_csv("history_mom_6m.csv", index=False)
-
     print("\nOutputs written:")
-    print("  summary.csv            — per-stock + portfolio summary (1M momentum)")
-    print("  portfolio_pnl.csv      — monthly returns (1M momentum)")
-    print("  history.csv            — full trade history (1M momentum)")
-    print("  portfolio_no_filter.csv — monthly returns (no filter)")
-    print("  portfolio_mom_6m.csv   — monthly returns (6M momentum)")
-    print("  history_no_filter.csv  — trade history (no filter)")
-    print("  history_mom_6m.csv     — trade history (6M momentum)")
+    print("  summary.csv       — per-stock + portfolio summary (PUT-only 1M)")
+    print("  portfolio_pnl.csv — monthly returns (PUT-only 1M)")
+    print("  history.csv       — full trade history (PUT-only 1M)")
+    print("  portfolio_{key}.csv for each of the 6 strategy variants")
 
 
 if __name__ == "__main__":
