@@ -413,19 +413,16 @@ def run_portfolio(
         n_active = len(active)
 
         # ── Uniform size ──────────────────────────────────────────────────────
-        # S × n_active × avg_prem / 100 = portfolio_cumulated_loss
-        # S = portfolio_cumulated_loss × 100 / (n_active × avg_prem)
-        # (portfolio_cumulated_loss here is a fraction: 0.70 means 70%)
+        # Recovery: size_base covers the deficit in one month; ×2 so that a
+        # good month both clears the loss AND earns the same amount as profit.
+        # No leverage cap — size is unconstrained (only MAX_SIZE safety limit).
         if in_recovery and n_active > 0:
             avg_prem = float(np.mean([base[t].loc[date, "prem_frac"] for t in active]))
             denom    = avg_prem if avg_prem > 0 else FALLBACK_PREMIUM
-            uniform_size = min(MAX_SIZE, max(1, int(np.ceil(
+            size_base    = max(1, int(np.ceil(
                 portfolio_cumulated_loss / (n_active * denom / 100.0)
-            ))))
-            # Hard cap: total capital deployed ≤ MAX_LEVERAGE × 100%
-            # uniform_size × n_active / 100 ≤ MAX_LEVERAGE
-            leverage_cap = max(1, int(np.floor(MAX_LEVERAGE * 100 / n_active)))
-            uniform_size = min(uniform_size, leverage_cap)
+            )))
+            uniform_size = min(MAX_SIZE, size_base * 2)
         else:
             uniform_size = 1
 
