@@ -1,0 +1,199 @@
+Apple (AAPL)
+
+Microsoft (MSFT)
+
+Amazon (AMZN)
+
+Alphabet (GOOGL)
+
+Facebook (FB)
+
+Tesla (TSLA)
+
+Berkshire Hathaway (BRK.B)
+
+Visa (V)
+
+JPMorgan Chase (JPM)
+
+Johnson & Johnson (JNJ)
+
+Walmart (WMT)
+
+Mastercard (MA)
+
+UnitedHealth Group (UNH)
+
+Nvidia (NVDA)
+
+Disney (DIS)
+
+Home Depot (HD)
+
+Procter & Gamble (PG)
+
+PayPal (PYPL)
+
+Bank of America (BAC)
+
+Verizon (VZ)
+
+Coca-Cola (KO)
+
+Netflix (NFLX)
+
+Adobe (ADBE)
+
+Intel (INTC)
+
+PepsiCo (PEP)
+
+AT&T (T)
+
+Abbott Labs (ABT)
+
+Chevron (CVX)
+
+Exxon Mobil (XOM)
+
+AbbVie (ABBV)
+
+Salesforce (CRM)
+
+Broadcom (AVGO)
+
+Accenture (ACN)
+
+Oracle (ORCL)
+
+Comcast (CMCSA)
+
+Pfizer (PFE)
+
+Merck & Co (MRK)
+
+Eli Lilly (LLY)
+
+Thermo Fisher (TMO)
+
+Cisco Systems (CSCO)
+
+Texas Instruments (TXN)
+
+Medtronic (MDT)
+
+Qualcomm (QCOM)
+
+NextEra Energy (NEE)
+
+Costco (COST)
+
+Union Pacific (UNP)
+
+Nike (NKE)
+
+McDonald's (MCD)
+
+Danaher (DHR)
+
+Amgen (AMGN)
+
+Honeywell (HON)
+
+ServiceNow (NOW)
+
+Charter Communications (CHTR)
+
+Morgan Stanley (MS)
+
+American Tower (AMT)
+
+Lowe's (LOW)
+
+Citigroup (C)
+
+S&P Global (SPGI)
+
+UPS (UPS)
+
+Intuit (INTU)
+
+Boeing (BA)
+
+Goldman Sachs (GS)
+
+Lockheed Martin (LMT)
+
+Prologis (PLD)
+
+Applied Materials (AMAT)
+
+Stryker (SYK)
+
+Bristol-Myers Squibb (BMY)
+
+Starbucks (SBUX)
+
+Charles Schwab (SCHW)
+
+Anthem (ANTM)
+
+Caterpillar (CAT)
+
+TJX Companies (TJX)
+
+Mondelez International (MDLZ)
+
+Southern Co (SO)
+
+BlackRock (BLK)
+
+Intuitive Surgical (ISRG)
+
+Square (SQ)
+
+AMD (AMD)
+
+Cigna (CI)
+
+CVS Health (CVS)
+
+American Express (AXP)
+
+Deere & Co (DE)
+
+Booking Holdings (BKNG)
+
+3M Co (MMM)
+
+Target (TGT)
+
+Duke Energy (DUK)
+
+T-Mobile US (TMUS)
+
+Vertex Pharmaceuticals (VRTX)
+
+Zoetis (ZTS)
+
+Lam Research (LRCX)
+
+General Electric (GE)
+
+Micron (MU)
+
+Estée Lauder (EL)
+
+Fiserv (FISV)
+
+ServiceNow (NOW)
+
+Illinois Tool Works (ITW)
+
+Humana (HUM)
+
+Activision Blizzard (ATVI)
+
+CSX Corp (CSX)
+
+Edwards Lifesciences (EW)

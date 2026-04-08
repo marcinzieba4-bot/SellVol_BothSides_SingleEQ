@@ -1,0 +1,199 @@
+Nvidia (NVDA)
+
+Apple (AAPL)
+
+Alphabet (GOOGL)
+
+Microsoft (MSFT)
+
+Amazon (AMZN)
+
+Meta Platforms (META)
+
+Broadcom (AVGO)
+
+Tesla (TSLA)
+
+Berkshire Hathaway (BRK.B)
+
+Eli Lilly (LLY)
+
+JPMorgan Chase (JPM)
+
+Visa (V)
+
+Netflix (NFLX)
+
+Mastercard (MA)
+
+Costco (COST)
+
+Exxon Mobil (XOM)
+
+Walmart (WMT)
+
+Procter & Gamble (PG)
+
+Johnson & Johnson (JNJ)
+
+Home Depot (HD)
+
+AbbVie (ABBV)
+
+Bank of America (BAC)
+
+UnitedHealth Group (UNH)
+
+Coca-Cola (KO)
+
+Philip Morris (PM)
+
+Salesforce (CRM)
+
+Oracle (ORCL)
+
+Cisco Systems (CSCO)
+
+GE Aerospace (GE)
+
+Palantir Technologies (PLTR)
+
+IBM (IBM)
+
+Wells Fargo (WFC)
+
+Abbott Labs (ABT)
+
+McDonald's (MCD)
+
+Chevron (CVX)
+
+Linde (LIN)
+
+ServiceNow (NOW)
+
+Disney (DIS)
+
+Accenture (ACN)
+
+AT&T (T)
+
+Intuitive Surgical (ISRG)
+
+Merck & Co (MRK)
+
+Uber Technologies (UBER)
+
+Goldman Sachs (GS)
+
+Intuit (INTU)
+
+Verizon (VZ)
+
+Advanced Micro Devices (AMD)
+
+Adobe (ADBE)
+
+RTX Corporation (RTX)
+
+PepsiCo (PEP)
+
+Booking Holdings (BKNG)
+
+Texas Instruments (TXN)
+
+Qualcomm (QCOM)
+
+Progressive (PGR)
+
+Caterpillar (CAT)
+
+S&P Global (SPGI)
+
+American Express (AXP)
+
+Morgan Stanley (MS)
+
+Boston Scientific (BSX)
+
+Boeing (BA)
+
+Thermo Fisher (TMO)
+
+Charles Schwab (SCHW)
+
+TJX Companies (TJX)
+
+NextEra Energy (NEE)
+
+Amgen (AMGN)
+
+Honeywell (HON)
+
+BlackRock (BLK)
+
+Citigroup (C)
+
+Union Pacific (UNP)
+
+Gilead Sciences (GILD)
+
+Comcast (CMCSA)
+
+Applied Materials (AMAT)
+
+Automatic Data Processing (ADP)
+
+Pfizer (PFE)
+
+Stryker (SYK)
+
+Deere & Co (DE)
+
+Lowe's (LOW)
+
+Eaton (ETN)
+
+GE Vernova (GEV)
+
+Palo Alto Networks (PANW)
+
+Danaher (DHR)
+
+Capital One (COF)
+
+T-Mobile US (TMUS)
+
+Marsh & McLennan (MMC)
+
+Vertex Pharma (VRTX)
+
+ConocoPhillips (COP)
+
+Analog Devices (ADI)
+
+Medtronic (MDT)
+
+Chubb Limited (CB)
+
+CrowdStrike (CRWD)
+
+Micron Technology (MU)
+
+Lam Research (LRCX)
+
+Amphenol (APH)
+
+KLA Corporation (KLAC)
+
+CME Group (CME)
+
+Altria Group (MO)
+
+Blackstone (BX)
+
+Intercontinental Exchange (ICE)
+
+American Tower (AMT)
+
+Lockheed Martin (LMT)

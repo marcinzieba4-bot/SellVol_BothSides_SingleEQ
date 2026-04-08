@@ -1,0 +1,199 @@
+Apple (AAPL)
+
+Microsoft (MSFT)
+
+Alphabet (GOOGL)
+
+Amazon (AMZN)
+
+Berkshire Hathaway (BRK.B)
+
+UnitedHealth Group (UNH)
+
+Johnson & Johnson (JNJ)
+
+Exxon Mobil (XOM)
+
+Visa (V)
+
+JPMorgan Chase (JPM)
+
+Meta Platforms (META)
+
+Procter & Gamble (PG)
+
+Nvidia (NVDA)
+
+Mastercard (MA)
+
+Chevron (CVX)
+
+Home Depot (HD)
+
+AbbVie (ABBV)
+
+Eli Lilly (LLY)
+
+Pfizer (PFE)
+
+Coca-Cola (KO)
+
+PepsiCo (PEP)
+
+Merck & Co (MRK)
+
+Costco (COST)
+
+Broadcom (AVGO)
+
+Thermo Fisher (TMO)
+
+Bank of America (BAC)
+
+Abbott Labs (ABT)
+
+Danaher (DHR)
+
+Cisco Systems (CSCO)
+
+McDonald's (MCD)
+
+Accenture (ACN)
+
+Walt Disney (DIS)
+
+Adobe (ADBE)
+
+NextEra Energy (NEE)
+
+Salesforce (CRM)
+
+Verizon (VZ)
+
+Bristol-Myers Squibb (BMY)
+
+Wells Fargo (WFC)
+
+Texas Instruments (TXN)
+
+Philip Morris (PM)
+
+Comcast (CMCSA)
+
+Raytheon (RTX)
+
+Nike (NKE)
+
+UPS (UPS)
+
+Amgen (AMGN)
+
+ConocoPhillips (COP)
+
+Honeywell (HON)
+
+Lockheed Martin (LMT)
+
+Union Pacific (UNP)
+
+Charles Schwab (SCHW)
+
+Morgan Stanley (MS)
+
+Intuit (INTU)
+
+Lowe's (LOW)
+
+S&P Global (SPGI)
+
+Medtronic (MDT)
+
+AT&T (T)
+
+Qualcomm (QCOM)
+
+Goldman Sachs (GS)
+
+Intel (INTC)
+
+Caterpillar (CAT)
+
+Oracle (ORCL)
+
+ServiceNow (NOW)
+
+American Tower (AMT)
+
+Stryker (SYK)
+
+Deere & Co (DE)
+
+BlackRock (BLK)
+
+Netflix (NFLX)
+
+IBM (IBM)
+
+Applied Materials (AMAT)
+
+CVS Health (CVS)
+
+Starbucks (SBUX)
+
+Intuitive Surgical (ISRG)
+
+Automatic Data Processing (ADP)
+
+T-Mobile US (TMUS)
+
+Gilead Sciences (GILD)
+
+Analog Devices (ADI)
+
+Bookings Holdings (BKNG)
+
+Prologis (PLD)
+
+Mondelez (MDLZ)
+
+TJX Companies (TJX)
+
+American Express (AXP)
+
+Chubb Limited (CB)
+
+Vertex Pharmaceuticals (VRTX)
+
+Marsh & McLennan (MMC)
+
+Duke Energy (DUK)
+
+Becton Dickinson (BDX)
+
+Southern Co (SO)
+
+Estée Lauder (EL)
+
+Fiserv (FI)
+
+Zoetis (ZTS)
+
+EOG Resources (EOG)
+
+Micron (MU)
+
+Lam Research (LRCX)
+
+General Electric (GE)
+
+Northrop Grumman (NOC)
+
+Humana (HUM)
+
+Equinix (EQIX)
+
+Illinois Tool Works (ITW)
+
+Waste Management (WM)
+
+Boston Scientific (BSX)

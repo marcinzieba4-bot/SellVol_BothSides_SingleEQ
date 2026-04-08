@@ -1,0 +1,199 @@
+Apple (AAPL)
+
+Exxon Mobil (XOM)
+
+Microsoft (MSFT)
+
+Google (GOOGL)
+
+Berkshire Hathaway (BRK.B)
+
+Johnson & Johnson (JNJ)
+
+Wells Fargo (WFC)
+
+General Electric (GE)
+
+Walmart (WMT)
+
+JPMorgan Chase (JPM)
+
+Procter & Gamble (PG)
+
+Chevron (CVX)
+
+Verizon (VZ)
+
+Pfizer (PFE)
+
+Coca-Cola (KO)
+
+Oracle (ORCL)
+
+AT&T (T)
+
+Facebook (FB)
+
+Merck & Co (MRK)
+
+Walt Disney (DIS)
+
+Gilead Sciences (GILD)
+
+Intel (INTC)
+
+Visa (V)
+
+PepsiCo (PEP)
+
+IBM (IBM)
+
+Cisco Systems (CSCO)
+
+Citigroup (C)
+
+Home Depot (HD)
+
+Amgen (AMGN)
+
+UnitedHealth Group (UNH)
+
+AbbVie (ABBV)
+
+Philip Morris (PM)
+
+Amazon (AMZN)
+
+Comcast (CMCSA)
+
+Schlumberger (SLB)
+
+Bank of America (BAC)
+
+Mastercard (MA)
+
+Medtronic (MDT)
+
+Union Pacific (UNP)
+
+McDonald's (MCD)
+
+Bristol-Myers Squibb (BMY)
+
+3M Co (MMM)
+
+United Technologies (UTX)
+
+Biogen (BIIB)
+
+CVS Health (CVS)
+
+Celgene (CELG)
+
+Qualcomm (QCOM)
+
+Boeing (BA)
+
+Abbott Labs (ABT)
+
+Allergan (AGN)
+
+American Express (AXP)
+
+Honeywell (HON)
+
+Walgreens Boots Alliance (WBA)
+
+Altria Group (MO)
+
+Goldman Sachs (GS)
+
+Starbucks (SBUX)
+
+Lowe's Companies (LOW)
+
+Nike (NKE)
+
+Texas Instruments (TXN)
+
+Costco (COST)
+
+Eli Lilly (LLY)
+
+Thermo Fisher Scientific (TMO)
+
+U.S. Bancorp (USB)
+
+Morgan Stanley (MS)
+
+Monsanto (MON)
+
+Danaher (DHR)
+
+Lockheed Martin (LMT)
+
+American Tower (AMT)
+
+MetLife (MET)
+
+DuPont (DD)
+
+Express Scripts (ESRX)
+
+Colgate-Palmolive (CL)
+
+Caterpillar (CAT)
+
+Adobe (ADBE)
+
+Target (TGT)
+
+NextEra Energy (NEE)
+
+Simon Property Group (SPG)
+
+BlackRock (BLK)
+
+Anthem (ANTM)
+
+FedEx (FDX)
+
+Halliburton (HAL)
+
+Ford Motor (F)
+
+Dow Chemical (DOW)
+
+General Motors (GM)
+
+Salesforce (CRM)
+
+Cognizant (CTSH)
+
+Raytheon (RTN)
+
+Automatic Data Processing (ADP)
+
+PPL Corp (PPL)
+
+Southern Co (SO)
+
+Prudential Financial (PRU)
+
+Time Warner (TWX)
+
+EOG Resources (EOG)
+
+Illinois Tool Works (ITW)
+
+EMC Corp (EMC)
+
+Netflix (NFLX)
+
+Mondelez International (MDLZ)
+
+General Mills (GIS)
+
+Becton Dickinson (BDX)
+
+LyondellBasell (LYB)

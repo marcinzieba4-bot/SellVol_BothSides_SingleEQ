@@ -1,0 +1,199 @@
+Nvidia (NVDA)
+
+Microsoft (MSFT)
+
+Apple (AAPL)
+
+Amazon (AMZN)
+
+Alphabet (GOOGL)
+
+Meta Platforms (META)
+
+Broadcom (AVGO)
+
+Tesla (TSLA)
+
+Berkshire Hathaway (BRK.B)
+
+Eli Lilly (LLY)
+
+JPMorgan Chase (JPM)
+
+Visa (V)
+
+UnitedHealth Group (UNH)
+
+Walmart (WMT)
+
+Mastercard (MA)
+
+Exxon Mobil (XOM)
+
+Johnson & Johnson (JNJ)
+
+Home Depot (HD)
+
+Procter & Gamble (PG)
+
+Costco (COST)
+
+Oracle (ORCL)
+
+AbbVie (ABBV)
+
+Netflix (NFLX)
+
+Chevron (CVX)
+
+Bank of America (BAC)
+
+Advanced Micro Devices (AMD)
+
+Coca-Cola (KO)
+
+Salesforce (CRM)
+
+Adobe (ADBE)
+
+PepsiCo (PEP)
+
+Merck & Co (MRK)
+
+Thermo Fisher (TMO)
+
+Accenture (ACN)
+
+McDonald's (MCD)
+
+Cisco Systems (CSCO)
+
+Palantir Technologies (PLTR)
+
+Abbott Labs (ABT)
+
+Danaher (DHR)
+
+Wells Fargo (WFC)
+
+Intuit (INTU)
+
+Qualcomm (QCOM)
+
+GE Aerospace (GE)
+
+Verizon (VZ)
+
+Texas Instruments (TXN)
+
+NextEra Energy (NEE)
+
+ServiceNow (NOW)
+
+Philip Morris (PM)
+
+Disney (DIS)
+
+Intel (INTC)
+
+Caterpillar (CAT)
+
+IBM (IBM)
+
+Union Pacific (UNP)
+
+Lowe's (LOW)
+
+Amgen (AMGN)
+
+Honeywell (HON)
+
+Intuitive Surgical (ISRG)
+
+S&P Global (SPGI)
+
+RTX Corporation (RTX)
+
+American Express (AXP)
+
+Morgan Stanley (MS)
+
+Goldman Sachs (GS)
+
+Stryker (SYK)
+
+BlackRock (BLK)
+
+T-Mobile US (TMUS)
+
+Applied Materials (AMAT)
+
+Booking Holdings (BKNG)
+
+Charles Schwab (SCHW)
+
+TJX Companies (TJX)
+
+Uber Technologies (UBER)
+
+Lockheed Martin (LMT)
+
+Progressive (PGR)
+
+Gilead Sciences (GILD)
+
+Vertex Pharma (VRTX)
+
+Marsh & McLennan (MMC)
+
+Analog Devices (ADI)
+
+Palo Alto Networks (PANW)
+
+Lam Research (LRCX)
+
+Micron Technology (MU)
+
+Boston Scientific (BSX)
+
+Automatic Data Processing (ADP)
+
+Fiserv (FI)
+
+Eaton (ETN)
+
+Zoetis (ZTS)
+
+Mondelez (MDLZ)
+
+Arista Networks (ANET)
+
+Southern Co (SO)
+
+Duke Energy (DUK)
+
+CrowdStrike (CRWD)
+
+KLA Corporation (KLAC)
+
+Boeing (BA)
+
+Intercontinental Exchange (ICE)
+
+Waste Management (WM)
+
+Sherwin-Williams (SHW)
+
+Blackstone (BX)
+
+Chipotle (CMG)
+
+Equinix (EQIX)
+
+Colgate-Palmolive (CL)
+
+General Dynamics (GD)
+
+Parker-Hannifin (PH)
+
+DoorDash (DASH)

@@ -1,0 +1,199 @@
+Apple (AAPL)
+
+Microsoft (MSFT)
+
+Alphabet (GOOGL)
+
+Amazon (AMZN)
+
+Tesla (TSLA)
+
+Meta Platforms (FB)
+
+Nvidia (NVDA)
+
+Berkshire Hathaway (BRK.B)
+
+UnitedHealth Group (UNH)
+
+JPMorgan Chase (JPM)
+
+Johnson & Johnson (JNJ)
+
+Visa (V)
+
+Home Depot (HD)
+
+Procter & Gamble (PG)
+
+Mastercard (MA)
+
+Bank of America (BAC)
+
+Pfizer (PFE)
+
+Broadcom (AVGO)
+
+Chevron (CVX)
+
+AbbVie (ABBV)
+
+Abbott Labs (ABT)
+
+Costco (COST)
+
+Thermo Fisher (TMO)
+
+Cisco Systems (CSCO)
+
+PepsiCo (PEP)
+
+Coca-Cola (KO)
+
+Disney (DIS)
+
+Accenture (ACN)
+
+Adobe (ADBE)
+
+Salesforce (CRM)
+
+Danaher (DHR)
+
+Eli Lilly (LLY)
+
+Wells Fargo (WFC)
+
+Verizon (VZ)
+
+Netflix (NFLX)
+
+Merck & Co (MRK)
+
+NextEra Energy (NEE)
+
+Qualcomm (QCOM)
+
+Oracle (ORCL)
+
+Texas Instruments (TXN)
+
+Philip Morris (PM)
+
+Lowe's (LOW)
+
+Nike (NKE)
+
+UPS (UPS)
+
+Intuit (INTU)
+
+Charles Schwab (SCHW)
+
+Intel (INTC)
+
+AMD (AMD)
+
+Medtronic (MDT)
+
+Morgan Stanley (MS)
+
+S&P Global (SPGI)
+
+BlackRock (BLK)
+
+ServiceNow (NOW)
+
+Honeywell (HON)
+
+Union Pacific (UNP)
+
+American Tower (AMT)
+
+Goldman Sachs (GS)
+
+AT&T (T)
+
+Bristol-Myers Squibb (BMY)
+
+Lockheed Martin (LMT)
+
+Applied Materials (AMAT)
+
+Stryker (SYK)
+
+CVS Health (CVS)
+
+Anthem (ANTM)
+
+Prologis (PLD)
+
+Intuitive Surgical (ISRG)
+
+Target (TGT)
+
+American Express (AXP)
+
+PayPal (PYPL)
+
+Caterpillar (CAT)
+
+T-Mobile US (TMUS)
+
+Citigroup (C)
+
+Starbucks (SBUX)
+
+Raytheon (RTX)
+
+Boeing (BA)
+
+Gilead Sciences (GILD)
+
+TJX Companies (TJX)
+
+Lam Research (LRCX)
+
+Zoetis (ZTS)
+
+3M Co (MMM)
+
+Estée Lauder (EL)
+
+Micron (MU)
+
+Booking Holdings (BKNG)
+
+Fiserv (FISV)
+
+Equinix (EQIX)
+
+Duke Energy (DUK)
+
+Deere & Co (DE)
+
+Automatic Data Processing (ADP)
+
+Becton Dickinson (BDX)
+
+Southern Co (SO)
+
+Mondelez International (MDLZ)
+
+Vertex Pharmaceuticals (VRTX)
+
+Sherwin-Williams (SHW)
+
+General Motors (GM)
+
+Regeneron (REGN)
+
+Illinois Tool Works (ITW)
+
+Analog Devices (ADI)
+
+Humana (HUM)
+
+KLA Corporation (KLAC)
+
+Ford Motor (F)

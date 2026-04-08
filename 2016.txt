@@ -1,0 +1,199 @@
+Apple (AAPL)
+
+Alphabet (GOOGL)
+
+Microsoft (MSFT)
+
+Exxon Mobil (XOM)
+
+Berkshire Hathaway (BRK.B)
+
+Amazon (AMZN)
+
+Facebook (FB)
+
+Johnson & Johnson (JNJ)
+
+General Electric (GE)
+
+JPMorgan Chase (JPM)
+
+Wells Fargo (WFC)
+
+Procter & Gamble (PG)
+
+Walmart (WMT)
+
+Pfizer (PFE)
+
+Chevron (CVX)
+
+Verizon (VZ)
+
+Coca-Cola (KO)
+
+AT&T (T)
+
+Oracle (ORCL)
+
+Disney (DIS)
+
+Visa (V)
+
+Merck & Co (MRK)
+
+Home Depot (HD)
+
+Intel (INTC)
+
+PepsiCo (PEP)
+
+Citigroup (C)
+
+Philip Morris (PM)
+
+IBM (IBM)
+
+Cisco Systems (CSCO)
+
+UnitedHealth Group (UNH)
+
+Gilead Sciences (GILD)
+
+Amgen (AMGN)
+
+Mastercard (MA)
+
+Medtronic (MDT)
+
+McDonald's (MCD)
+
+Bank of America (BAC)
+
+AbbVie (ABBV)
+
+Schlumberger (SLB)
+
+Starbucks (SBUX)
+
+3M Co (MMM)
+
+Union Pacific (UNP)
+
+Bristol-Myers Squibb (BMY)
+
+CVS Health (CVS)
+
+United Technologies (UTX)
+
+Abbott Labs (ABT)
+
+Boeing (BA)
+
+Honeywell (HON)
+
+Nike (NKE)
+
+Allergan (AGN)
+
+Altria Group (MO)
+
+Costco (COST)
+
+Walgreens Boots Alliance (WBA)
+
+Texas Instruments (TXN)
+
+Eli Lilly (LLY)
+
+Celgene (CELG)
+
+American Express (AXP)
+
+Goldman Sachs (GS)
+
+Qualcomm (QCOM)
+
+Lowe's Companies (LOW)
+
+Biogen (BIIB)
+
+Thermo Fisher Scientific (TMO)
+
+Danaher (DHR)
+
+Monsanto (MON)
+
+Morgan Stanley (MS)
+
+Lockheed Martin (LMT)
+
+Netflix (NFLX)
+
+Adobe (ADBE)
+
+American Tower (AMT)
+
+U.S. Bancorp (USB)
+
+Target (TGT)
+
+NextEra Energy (NEE)
+
+Caterpillar (CAT)
+
+BlackRock (BLK)
+
+Colgate-Palmolive (CL)
+
+Salesforce (CRM)
+
+Anthem (ANTM)
+
+Simon Property Group (SPG)
+
+Charles Schwab (SCHW)
+
+Raytheon (RTN)
+
+FedEx (FDX)
+
+MetLife (MET)
+
+Duke Energy (DUK)
+
+Mondelez International (MDLZ)
+
+General Motors (GM)
+
+PayPal (PYPL) — Newly spun off from eBay
+
+Cognizant (CTSH)
+
+Automatic Data Processing (ADP)
+
+PPL Corp (PPL)
+
+Southern Co (SO)
+
+Dow Chemical (DOW)
+
+EOG Resources (EOG)
+
+Prudential Financial (PRU)
+
+Illinois Tool Works (ITW)
+
+Time Warner (TWX)
+
+General Mills (GIS)
+
+Becton Dickinson (BDX)
+
+LyondellBasell (LYB)
+
+Equinix (EQIX)
+
+AIG (AIG)
+
+Stryker (SYK)

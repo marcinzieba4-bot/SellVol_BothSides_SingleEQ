@@ -1,0 +1,199 @@
+Apple (AAPL)
+
+Alphabet (GOOGL)
+
+Microsoft (MSFT)
+
+Amazon (AMZN)
+
+Facebook (FB)
+
+Berkshire Hathaway (BRK.B)
+
+JPMorgan Chase (JPM)
+
+Johnson & Johnson (JNJ)
+
+Exxon Mobil (XOM)
+
+Visa (V)
+
+Walmart (WMT)
+
+Bank of America (BAC)
+
+Procter & Gamble (PG)
+
+UnitedHealth Group (UNH)
+
+Pfizer (PFE)
+
+Chevron (CVX)
+
+Home Depot (HD)
+
+Wells Fargo (WFC)
+
+Verizon (VZ)
+
+AT&T (T)
+
+Intel (INTC)
+
+Mastercard (MA)
+
+Coca-Cola (KO)
+
+Cisco Systems (CSCO)
+
+Merck & Co (MRK)
+
+Oracle (ORCL)
+
+PepsiCo (PEP)
+
+Disney (DIS)
+
+AbbVie (ABBV)
+
+Boeing (BA)
+
+Citigroup (C)
+
+Philip Morris (PM)
+
+McDonald's (MCD)
+
+Comcast (CMCSA)
+
+Medtronic (MDT)
+
+3M Co (MMM)
+
+Abbott Labs (ABT)
+
+Honeywell (HON)
+
+Nvidia (NVDA)
+
+IBM (IBM)
+
+Amgen (AMGN)
+
+Texas Instruments (TXN)
+
+United Technologies (UTX)
+
+Netflix (NFLX)
+
+Costco (COST)
+
+Broadcom (AVGO)
+
+Adobe (ADBE)
+
+Altria Group (MO)
+
+Union Pacific (UNP)
+
+Salesforce (CRM)
+
+Bristol-Myers Squibb (BMY)
+
+Lockheed Martin (LMT)
+
+Nike (NKE)
+
+Eli Lilly (LLY)
+
+Goldman Sachs (GS)
+
+NextEra Energy (NEE)
+
+Danaher (DHR)
+
+Thermo Fisher (TMO)
+
+CVS Health (CVS)
+
+American Express (AXP)
+
+Morgan Stanley (MS)
+
+PayPal (PYPL)
+
+U.S. Bancorp (USB)
+
+Celgene (CELG)
+
+Starbucks (SBUX)
+
+Lowe's (LOW)
+
+Charter Communications (CHTR)
+
+Qualcomm (QCOM)
+
+Caterpillar (CAT)
+
+BlackRock (BLK)
+
+Charles Schwab (SCHW)
+
+Raytheon (RTN)
+
+Anthem (ANTM)
+
+American Tower (AMT)
+
+Gilead Sciences (GILD)
+
+Walgreens Boots Alliance (WBA)
+
+T-Mobile US (TMUS)
+
+Mondelez International (MDLZ)
+
+Duke Energy (DUK)
+
+Automatic Data Processing (ADP)
+
+Becton Dickinson (BDX)
+
+Intuitive Surgical (ISRG)
+
+Stryker (SYK)
+
+FedEx (FDX)
+
+Applied Materials (AMAT)
+
+Southern Co (SO)
+
+TJX Companies (TJX)
+
+EOG Resources (EOG)
+
+MetLife (MET)
+
+General Motors (GM)
+
+Illinois Tool Works (ITW)
+
+Micron (MU)
+
+S&P Global (SPGI)
+
+Booking Holdings (BKNG)
+
+General Electric (GE) — The great fall continues
+
+CME Group (CME)
+
+Colgate-Palmolive (CL)
+
+Equinix (EQIX)
+
+CSX Corp (CSX)
+
+Intercontinental Exchange (ICE)

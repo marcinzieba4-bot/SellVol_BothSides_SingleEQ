@@ -1,0 +1,199 @@
+Apple (AAPL)
+
+Alphabet (GOOGL)
+
+Microsoft (MSFT)
+
+Amazon (AMZN)
+
+Facebook (FB)
+
+Berkshire Hathaway (BRK.B)
+
+Exxon Mobil (XOM)
+
+JPMorgan Chase (JPM)
+
+Johnson & Johnson (JNJ)
+
+General Electric (GE)
+
+Wells Fargo (WFC)
+
+Procter & Gamble (PG)
+
+AT&T (T)
+
+Bank of America (BAC)
+
+Pfizer (PFE)
+
+Chevron (CVX)
+
+Verizon (VZ)
+
+Visa (V)
+
+Walmart (WMT)
+
+Coca-Cola (KO)
+
+Home Depot (HD)
+
+Oracle (ORCL)
+
+Merck & Co (MRK)
+
+Disney (DIS)
+
+UnitedHealth Group (UNH)
+
+Intel (INTC)
+
+PepsiCo (PEP)
+
+Cisco Systems (CSCO)
+
+Citigroup (C)
+
+Philip Morris (PM)
+
+Mastercard (MA)
+
+IBM (IBM)
+
+Medtronic (MDT)
+
+McDonald's (MCD)
+
+Comcast (CMCSA)
+
+Amgen (AMGN)
+
+AbbVie (ABBV)
+
+3M Co (MMM)
+
+Honeywell (HON)
+
+United Technologies (UTX)
+
+Boeing (BA)
+
+Schlumberger (SLB)
+
+Abbott Labs (ABT)
+
+Starbucks (SBUX)
+
+Texas Instruments (TXN)
+
+Costco (COST)
+
+Bristol-Myers Squibb (BMY)
+
+Union Pacific (UNP)
+
+Nike (NKE)
+
+Altria Group (MO)
+
+Celgene (CELG)
+
+Goldman Sachs (GS)
+
+Eli Lilly (LLY)
+
+CVS Health (CVS)
+
+Qualcomm (QCOM)
+
+Lowe's (LOW)
+
+Danaher (DHR)
+
+Thermo Fisher (TMO)
+
+American Express (AXP)
+
+Morgan Stanley (MS)
+
+Lockheed Martin (LMT)
+
+Adobe (ADBE)
+
+NextEra Energy (NEE)
+
+Salesforce (CRM)
+
+U.S. Bancorp (USB)
+
+Gilead Sciences (GILD)
+
+Broadcom (AVGO)
+
+Netflix (NFLX)
+
+Walgreens Boots Alliance (WBA)
+
+Charter Communications (CHTR)
+
+Caterpillar (CAT)
+
+BlackRock (BLK)
+
+Charles Schwab (SCHW)
+
+Nvidia (NVDA) — First time in top 100
+
+Raytheon (RTN)
+
+Anthem (ANTM)
+
+Colgate-Palmolive (CL)
+
+Allergan (AGN)
+
+PayPal (PYPL)
+
+American Tower (AMT)
+
+Duke Energy (DUK)
+
+T-Mobile US (TMUS)
+
+Mondelez International (MDLZ)
+
+Dow Chemical (DOW)
+
+FedEx (FDX)
+
+Applied Materials (AMAT)
+
+Southern Co (SO)
+
+Automatic Data Processing (ADP)
+
+MetLife (MET)
+
+General Motors (GM)
+
+Becton Dickinson (BDX)
+
+Stryker (SYK)
+
+EOG Resources (EOG)
+
+Illinois Tool Works (ITW)
+
+Cognizant (CTSH)
+
+Time Warner (TWX)
+
+Simon Property Group (SPG)
+
+Equinix (EQIX)
+
+Target (TGT)
+
+Intuitive Surgical (ISRG)

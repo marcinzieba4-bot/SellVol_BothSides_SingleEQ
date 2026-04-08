@@ -1,0 +1,199 @@
+Microsoft (MSFT)
+
+Apple (AAPL)
+
+Amazon (AMZN)
+
+Alphabet (GOOGL)
+
+Facebook (FB)
+
+Berkshire Hathaway (BRK.B)
+
+JPMorgan Chase (JPM)
+
+Visa (V)
+
+Johnson & Johnson (JNJ)
+
+Walmart (WMT)
+
+Procter & Gamble (PG)
+
+Mastercard (MA)
+
+UnitedHealth Group (UNH)
+
+Exxon Mobil (XOM)
+
+Bank of America (BAC)
+
+Intel (INTC)
+
+Verizon (VZ)
+
+Disney (DIS)
+
+Home Depot (HD)
+
+Coca-Cola (KO)
+
+AT&T (T)
+
+Chevron (CVX)
+
+Merck & Co (MRK)
+
+Pfizer (PFE)
+
+Cisco Systems (CSCO)
+
+PepsiCo (PEP)
+
+AbbVie (ABBV)
+
+Nvidia (NVDA)
+
+Adobe (ADBE)
+
+Wells Fargo (WFC)
+
+Comcast (CMCSA)
+
+Abbott Labs (ABT)
+
+McDonald's (MCD)
+
+Medtronic (MDT)
+
+Honeywell (HON)
+
+Boeing (BA)
+
+Netflix (NFLX)
+
+Broadcom (AVGO)
+
+Oracle (ORCL)
+
+Amgen (AMGN)
+
+Costco (COST)
+
+Texas Instruments (TXN)
+
+Union Pacific (UNP)
+
+Salesforce (CRM)
+
+Eli Lilly (LLY)
+
+Thermo Fisher (TMO)
+
+Philip Morris (PM)
+
+United Technologies (UTX)
+
+Nike (NKE)
+
+Danaher (DHR)
+
+Bristol-Myers Squibb (BMY)
+
+Lockheed Martin (LMT)
+
+IBM (IBM)
+
+Starbucks (SBUX)
+
+NextEra Energy (NEE)
+
+American Tower (AMT)
+
+Lowe's (LOW)
+
+Charter Communications (CHTR)
+
+PayPal (PYPL)
+
+American Express (AXP)
+
+Goldman Sachs (GS)
+
+Morgan Stanley (MS)
+
+Citigroup (C)
+
+Anthem (ANTM)
+
+CVS Health (CVS)
+
+BlackRock (BLK)
+
+S&P Global (SPGI)
+
+Intuitive Surgical (ISRG)
+
+Caterpillar (CAT)
+
+ServiceNow (NOW)
+
+Charles Schwab (SCHW)
+
+Raytheon (RTN)
+
+Stryker (SYK)
+
+T-Mobile US (TMUS)
+
+Gilead Sciences (GILD)
+
+Automatic Data Processing (ADP)
+
+Prologis (PLD)
+
+Becton Dickinson (BDX)
+
+Intuitive Surgical (ISRG)
+
+3M Co (MMM)
+
+Booking Holdings (BKNG)
+
+Mondelez International (MDLZ)
+
+Duke Energy (DUK)
+
+Target (TGT)
+
+Southern Co (SO)
+
+Fiserv (FISV)
+
+TJX Companies (TJX)
+
+Intuit (INTU)
+
+Zoetis (ZTS)
+
+Applied Materials (AMAT)
+
+General Motors (GM)
+
+Micron (MU)
+
+EOG Resources (EOG)
+
+Vertex Pharmaceuticals (VRTX)
+
+Illinois Tool Works (ITW)
+
+Estée Lauder (EL)
+
+CSX Corp (CSX)
+
+Regeneron (REGN)
+
+Waste Management (WM)
+
+Intercontinental Exchange (ICE)

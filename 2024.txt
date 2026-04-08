@@ -1,0 +1,199 @@
+Microsoft (MSFT)
+
+Apple (AAPL)
+
+Alphabet (GOOGL)
+
+Amazon (AMZN)
+
+Nvidia (NVDA)
+
+Meta Platforms (META)
+
+Tesla (TSLA)
+
+Berkshire Hathaway (BRK.B)
+
+Broadcom (AVGO)
+
+JPMorgan Chase (JPM)
+
+UnitedHealth Group (UNH)
+
+Eli Lilly (LLY)
+
+Visa (V)
+
+Johnson & Johnson (JNJ)
+
+Exxon Mobil (XOM)
+
+Mastercard (MA)
+
+Home Depot (HD)
+
+Procter & Gamble (PG)
+
+Costco (COST)
+
+Chevron (CVX)
+
+AbbVie (ABBV)
+
+Merck & Co (MRK)
+
+Salesforce (CRM)
+
+Adobe (ADBE)
+
+PepsiCo (PEP)
+
+Coca-Cola (KO)
+
+Oracle (ORCL)
+
+Advanced Micro Devices (AMD)
+
+Thermo Fisher (TMO)
+
+Accenture (ACN)
+
+McDonald's (MCD)
+
+Cisco Systems (CSCO)
+
+Netflix (NFLX)
+
+Abbott Labs (ABT)
+
+Danaher (DHR)
+
+Wells Fargo (WFC)
+
+Bank of America (BAC)
+
+Intel (INTC)
+
+Texas Instruments (TXN)
+
+Verizon (VZ)
+
+Intuit (INTU)
+
+NextEra Energy (NEE)
+
+Comcast (CMCSA)
+
+Qualcomm (QCOM)
+
+Amgen (AMGN)
+
+ServiceNow (NOW)
+
+Philip Morris (PM)
+
+Lowe's (LOW)
+
+Nike (NKE)
+
+Union Pacific (UNP)
+
+Caterpillar (CAT)
+
+IBM (IBM)
+
+S&P Global (SPGI)
+
+Honeywell (HON)
+
+Medtronic (MDT)
+
+Intuitive Surgical (ISRG)
+
+Boeing (BA)
+
+Morgan Stanley (MS)
+
+BlackRock (BLK)
+
+Goldman Sachs (GS)
+
+Applied Materials (AMAT)
+
+Stryker (SYK)
+
+American Express (AXP)
+
+Starbucks (SBUX)
+
+T-Mobile US (TMUS)
+
+General Electric (GE)
+
+Bristol-Myers Squibb (BMY)
+
+Booking Holdings (BKNG)
+
+Gilead Sciences (GILD)
+
+Lockheed Martin (LMT)
+
+Progressive (PGR)
+
+Vertex Pharma (VRTX)
+
+Zoetis (ZTS)
+
+TJX Companies (TJX)
+
+Charles Schwab (SCHW)
+
+Anthem (ELV)
+
+Analog Devices (ADI)
+
+Lam Research (LRCX)
+
+Prologis (PLD)
+
+Micron Technology (MU)
+
+Mondelez (MDLZ)
+
+Palo Alto Networks (PANW)
+
+Automatic Data Processing (ADP)
+
+Fiserv (FI)
+
+Boston Scientific (BSX)
+
+Uber Technologies (UBER) — Newly added to SPX
+
+Deere & Co (DE)
+
+Marsh & McLennan (MMC)
+
+CVS Health (CVS)
+
+Duke Energy (DUK)
+
+Arista Networks (ANET)
+
+Southern Co (SO)
+
+Eaton (ETN)
+
+Airbnb (ABNB)
+
+Chipotle (CMG)
+
+Equinix (EQIX)
+
+Intercontinental Exchange (ICE)
+
+KLA Corporation (KLAC)
+
+Waste Management (WM)
+
+McKesson (MCK)

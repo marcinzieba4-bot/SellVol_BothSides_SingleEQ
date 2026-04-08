@@ -1,0 +1,199 @@
+Microsoft (MSFT)
+
+Apple (AAPL)
+
+Amazon (AMZN)
+
+Alphabet (GOOGL)
+
+Berkshire Hathaway (BRK.B)
+
+Facebook (FB)
+
+Johnson & Johnson (JNJ)
+
+JPMorgan Chase (JPM)
+
+Visa (V)
+
+Exxon Mobil (XOM)
+
+Walmart (WMT)
+
+Bank of America (BAC)
+
+UnitedHealth Group (UNH)
+
+Pfizer (PFE)
+
+Procter & Gamble (PG)
+
+Intel (INTC)
+
+Verizon (VZ)
+
+Chevron (CVX)
+
+Mastercard (MA)
+
+Cisco Systems (CSCO)
+
+Home Depot (HD)
+
+Merck & Co (MRK)
+
+Coca-Cola (KO)
+
+Boeing (BA)
+
+Wells Fargo (WFC)
+
+Disney (DIS)
+
+PepsiCo (PEP)
+
+AT&T (T)
+
+AbbVie (ABBV)
+
+Oracle (ORCL)
+
+McDonald's (MCD)
+
+Citigroup (C)
+
+Netflix (NFLX)
+
+Medtronic (MDT)
+
+Abbott Labs (ABT)
+
+Adobe (ADBE)
+
+Honeywell (HON)
+
+Amgen (AMGN)
+
+Union Pacific (UNP)
+
+Salesforce (CRM)
+
+Costco (COST)
+
+Nvidia (NVDA)
+
+Broadcom (AVGO)
+
+Texas Instruments (TXN)
+
+Eli Lilly (LLY)
+
+3M Co (MMM)
+
+Philip Morris (PM)
+
+United Technologies (UTX)
+
+IBM (IBM)
+
+Altria Group (MO)
+
+Bristol-Myers Squibb (BMY)
+
+Lockheed Martin (LMT)
+
+Nike (NKE)
+
+Starbucks (SBUX)
+
+PayPal (PYPL)
+
+NextEra Energy (NEE)
+
+Thermo Fisher (TMO)
+
+Danaher (DHR)
+
+American Express (AXP)
+
+Goldman Sachs (GS)
+
+Morgan Stanley (MS)
+
+CVS Health (CVS)
+
+Lowe's (LOW)
+
+Charter Communications (CHTR)
+
+Qualcomm (QCOM)
+
+BlackRock (BLK)
+
+U.S. Bancorp (USB)
+
+American Tower (AMT)
+
+Anthem (ANTM)
+
+Caterpillar (CAT)
+
+Charles Schwab (SCHW)
+
+Raytheon (RTN)
+
+Stryker (SYK)
+
+T-Mobile US (TMUS)
+
+Gilead Sciences (GILD)
+
+Automatic Data Processing (ADP)
+
+Becton Dickinson (BDX)
+
+Intuitive Surgical (ISRG)
+
+S&P Global (SPGI)
+
+Bookings Holdings (BKNG)
+
+Mondelez International (MDLZ)
+
+Duke Energy (DUK)
+
+TJX Companies (TJX)
+
+Fiserv (FISV)
+
+Intuit (INTU)
+
+Applied Materials (AMAT)
+
+Southern Co (SO)
+
+General Motors (GM)
+
+FedEx (FDX)
+
+Micron (MU)
+
+EOG Resources (EOG)
+
+Illinois Tool Works (ITW)
+
+Zoetis (ZTS)
+
+Estée Lauder (EL)
+
+CSX Corp (CSX)
+
+CME Group (CME)
+
+Intercontinental Exchange (ICE)
+
+General Electric (GE)
+
+Colgate-Palmolive (CL)
+
+Vertex Pharmaceuticals (VRTX)
