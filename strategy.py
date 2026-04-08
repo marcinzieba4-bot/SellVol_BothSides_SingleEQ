@@ -316,9 +316,8 @@ def _get_stock_monthly_data(
       'none' — always bullish (treat as UP)
 
     strategy_mode:
-      'put_only'  — sell PUT when bullish, skip when bearish
-      'call_only' — sell CALL when bearish, skip when bullish
-      'both'      — sell PUT when bullish, sell CALL when bearish (always plays)
+      'sell_put'  — SELL PUT  when bullish: +prem + min(r,0)   collect prem, bleed on drops
+      'buy_call'  — BUY  CALL when bullish: +max(r,0) - prem   pay prem, profit on rallies
 
     Returns one row per month: date, trade, side, prem_frac, return_frac, pnl_pu_frac.
     """
@@ -345,18 +344,16 @@ def _get_stock_monthly_data(
         else:   # 'none'
             bullish = True
 
-        # Side selection
-        if strategy_mode == "put_only":
-            side = "put" if bullish else "skip"
-        elif strategy_mode == "call_only":
-            side = "call" if not bullish else "skip"
-        else:   # 'both'
-            side = "put" if bullish else "call"
-
-        if side != "skip":
-            prem   = get_premium(premiums, ticker, month, side)
-            pnl_pu = (prem + min(r, 0.0)) if side == "put" else (prem - max(r, 0.0))
-            records.append({"date": date, "trade": True,  "side": side,
+        # Side + PnL per unit
+        if strategy_mode == "sell_put" and bullish:
+            prem   = get_premium(premiums, ticker, month, "put")
+            pnl_pu = prem + min(r, 0.0)            # collect premium, lose on drops
+            records.append({"date": date, "trade": True,  "side": "sell_put",
+                             "prem_frac": prem, "return_frac": r, "pnl_pu_frac": pnl_pu})
+        elif strategy_mode == "buy_call" and bullish:
+            prem   = get_premium(premiums, ticker, month, "call")
+            pnl_pu = max(r, 0.0) - prem            # pay premium, profit on rallies
+            records.append({"date": date, "trade": True,  "side": "buy_call",
                              "prem_frac": prem, "return_frac": r, "pnl_pu_frac": pnl_pu})
         else:
             records.append({"date": date, "trade": False, "side": "skip",
@@ -379,7 +376,7 @@ def run_portfolio(
     Portfolio-level recovery sizing with point-in-time universe support.
 
     signal          — direction filter: '1m', '6m', or 'none'
-    strategy_mode   — 'put_only', 'call_only', or 'both'
+    strategy_mode   — 'sell_put' or 'buy_call'
     yearly_universe — {year: set(tickers)}; None = all tickers every year
 
     Each month:
@@ -832,12 +829,10 @@ def compare_strategies(
     """
     # (key, signal, strategy_mode, label)
     configs = [
-        ("put_1m",  "1m", "put_only",  "PUT only  | 1M mom: sell PUT  when prev UP"),
-        ("call_1m", "1m", "call_only", "CALL only | 1M mom: sell CALL when prev DOWN"),
-        ("both_1m", "1m", "both",      "BOTH      | 1M mom: PUT if UP, CALL if DOWN"),
-        ("put_6m",  "6m", "put_only",  "PUT only  | 6M mom: sell PUT  when 6m > 0"),
-        ("call_6m", "6m", "call_only", "CALL only | 6M mom: sell CALL when 6m < 0"),
-        ("both_6m", "6m", "both",      "BOTH      | 6M mom: PUT if 6m>0, CALL if 6m<0"),
+        ("sell_put_1m", "1m", "sell_put", "SELL PUT  | 1M: sell PUT  when prev UP"),
+        ("buy_call_1m", "1m", "buy_call", "BUY  CALL | 1M: buy  CALL when prev UP"),
+        ("sell_put_6m", "6m", "sell_put", "SELL PUT  | 6M: sell PUT  when 6m > 0"),
+        ("buy_call_6m", "6m", "buy_call", "BUY  CALL | 6M: buy  CALL when 6m > 0"),
     ]
 
     all_results: dict = {}
@@ -872,8 +867,8 @@ def compare_strategies(
     sep    = "=" * len(header)
 
     for group, title in [
-        (["put_1m", "call_1m", "both_1m"], "1M MOMENTUM"),
-        (["put_6m", "call_6m", "both_6m"], "6M MOMENTUM"),
+        (["sell_put_1m", "buy_call_1m"], "1M MOMENTUM"),
+        (["sell_put_6m", "buy_call_6m"], "6M MOMENTUM"),
     ]:
         print(f"\n{sep}")
         print(f"  STRATEGY COMPARISON — {title}  (2× recovery sizing, no leverage cap)")
@@ -926,7 +921,7 @@ def main() -> None:
     all_results = compare_strategies(closes, premiums, yearly_universe=yearly_universe)
 
     # 4. Detailed output for PUT-only 1M-momentum variant (primary strategy)
-    label, portfolio_df, risk_stats, stock_results = all_results["put_1m"]
+    label, portfolio_df, risk_stats, stock_results = all_results["sell_put_1m"]
     print(f"\n{'='*72}")
     print(f"  DETAILED RESULTS — {label}")
     print(f"{'='*72}")
