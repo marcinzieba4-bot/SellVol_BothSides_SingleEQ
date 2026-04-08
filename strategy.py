@@ -34,6 +34,8 @@ START_DATE       = "2015-01-01"
 END_DATE         = "2024-12-31"
 TOP_N            = 100
 MAX_SIZE         = 5_000     # safety cap on position size (units)
+TARGET_DTE       = 30        # standardise all premiums to this DTE
+ASSUMED_DTE      = 25        # fallback DTE if not present in S3 data
 
 import os
 AWS_KEY    = os.environ["AWS_ACCESS_KEY_ID"]
@@ -78,7 +80,38 @@ PROXY_MAP = {
     "T":      "CMCSA", "DIS":   "DIS",
     # Other
     "BRK-B":  "SPY",   "PYPL":  "MA",
+    # Historical large caps added for survivorship-bias fix
+    "INTC":   "AVGO",  # semiconductor peer
+    "VZ":     "CMCSA", # telecom peer
+    "WBA":    "WMT",   # retail/pharmacy
+    "CVS":    "UNH",   # healthcare services
+    "MO":     "PEP",   # defensive consumer
+    "UPS":    "IBM",   # industrials/logistics
+    "MMM":    "IBM",   # industrials
+    "GM":     "XOM",   # cyclical industrial
+    "F":      "XOM",   # cyclical industrial
+    "USB":    "JPM",   # regional bank → financials proxy
+    "SBUX":   "KO",    # consumer discretionary/staples
+    "TGT":    "WMT",   # retail
 }
+
+# ── Broader universe for point-in-time top-100 selection ──────────────────────
+# Includes 2024 large caps + historical large caps that have since fallen out.
+# This prevents survivorship bias from locking in the 2024 winner list.
+EXTRA_HISTORICAL = [
+    "INTC",   # Intel — was top-10 in 2015 (~$155B), now fallen
+    "VZ",     # Verizon — consistently top-20 (~$180-200B) but not in 2024 list
+    "WBA",    # Walgreens — was ~$90B (2015-18), now tiny
+    "CVS",    # CVS Health — was ~$100B, healthcare conglomerate
+    "MO",     # Altria — was ~$120B, defensive tobacco
+    "UPS",    # UPS — was ~$90B logistics
+    "MMM",    # 3M — was ~$100B (2015-19), now fallen
+    "GM",     # General Motors — was ~$55B cyclical
+    "F",      # Ford — was ~$50B cyclical
+    "USB",    # US Bancorp — was ~$75B regional bank
+    "SBUX",   # Starbucks — was ~$70B, now borderline top-100
+    "TGT",    # Target — was ~$45-100B retail
+]
 
 # Top-100 S&P 500 names by approximate market cap (2024)
 TOP100_TICKERS = [
@@ -142,6 +175,17 @@ def load_s3_premiums() -> dict[str, dict[str, dict]]:
                     df  = pd.read_csv(io.BytesIO(raw["Body"].read()))
                     df["observation_date"] = pd.to_datetime(df["observation_date"])
                     df["prem_frac"] = df["entry_premium"] / df["stock_price"]
+
+                    # ── DTE scaling: normalise premium to TARGET_DTE days ─────
+                    dte_col = next((c for c in df.columns
+                                    if c.lower() in ("dte", "days_to_expiry", "days_to_exp")), None)
+                    if dte_col:
+                        df["_dte"] = pd.to_numeric(df[dte_col], errors="coerce").fillna(ASSUMED_DTE)
+                    else:
+                        df["_dte"] = ASSUMED_DTE
+                    # formula: prem_scaled = prem_raw × (1 + 0.4 × (TARGET/DTE − 1))
+                    df["prem_frac"] *= (1 + 0.4 * (TARGET_DTE / df["_dte"] - 1))
+
                     df["month"]     = df["observation_date"].dt.to_period("M")
                     # One row per month (take last entry if duplicates)
                     monthly = (
@@ -227,6 +271,68 @@ def fetch_monthly_prices(tickers: list[str], start: str, end: str) -> pd.DataFra
     return closes
 
 
+# ── Point-in-Time Universe ─────────────────────────────────────────────────────
+
+def build_yearly_universes(
+    closes: pd.DataFrame,
+    n: int = TOP_N,
+) -> dict[int, set]:
+    """
+    For each year in the backtest, determine which tickers were in the top-N
+    by approximate market cap at 31-Jan of that year.
+
+    Market-cap proxy = price_at_jan_end × current_shares_outstanding.
+    Using current shares is an approximation; shares change slowly (<15% over
+    10 years for most large caps) so the ranking is still far more accurate than
+    using the 2024 market-cap ranking for the entire backtest.
+
+    Tickers with no price data at year-start (e.g. CEG spun off in 2022) are
+    naturally excluded from early years.
+    """
+    print("Building point-in-time universes …")
+
+    # Fetch current shares outstanding once per ticker
+    shares: dict[str, float] = {}
+    print("  Fetching shares outstanding (current, used as proxy) …")
+    for ticker in closes.columns:
+        try:
+            fi = yf.Ticker(ticker).fast_info
+            sh = getattr(fi, "shares", None)
+            if sh and sh > 0:
+                shares[ticker] = float(sh)
+        except Exception:
+            pass
+    print(f"  Got shares for {len(shares)} / {len(closes.columns)} tickers")
+
+    start_year = int(START_DATE[:4])
+    end_year   = int(END_DATE[:4])
+    yearly: dict[int, set] = {}
+
+    for year in range(start_year, end_year + 1):
+        jan_end = f"{year}-01-31"
+        mask = closes.index <= jan_end
+        if not mask.any():
+            yearly[year] = set()
+            continue
+
+        jan_prices = closes.loc[mask].iloc[-1]   # last price on/before Jan 31
+
+        mcap: dict[str, float] = {}
+        for ticker in closes.columns:
+            price = jan_prices.get(ticker, float("nan"))
+            sh    = shares.get(ticker, 0.0)
+            if not pd.isna(price) and sh > 0 and price > 0:
+                mcap[ticker] = price * sh
+
+        top_n = sorted(mcap, key=mcap.get, reverse=True)[:n]
+        yearly[year] = set(top_n)
+
+        top5 = ", ".join(top_n[:5])
+        print(f"  {year}: {len(top_n)} stocks  top-5: {top5}")
+
+    return yearly
+
+
 # ── Strategy Simulation ────────────────────────────────────────────────────────
 
 def _calc_size(accumulated_loss: float, premium: float) -> int:
@@ -239,28 +345,44 @@ def _get_stock_monthly_data(
     ticker: str,
     prices: pd.Series,
     premiums: dict,
+    signal: str = "1m",
 ) -> pd.DataFrame:
     """
     Scan monthly returns and compute per-unit base metrics — no sizing.
 
-    Returns one row per month:
-      date, trade (bool: True if prev candle was UP),
-      prem_frac, return_frac, pnl_pu_frac  (all fractions, size=1 implied)
+    signal:
+      '1m'  — trade when previous 1-month candle was UP  (original rule)
+      '6m'  — trade when 6-month return ending prior month was positive
+      'none' — always trade regardless of direction
+
+    Returns one row per month: date, trade, prem_frac, return_frac, pnl_pu_frac.
     """
     prices = prices.dropna()
     if len(prices) < 3:
         return pd.DataFrame()
 
-    returns = prices.pct_change().dropna()
-    records = []
-    prev_up = True   # assume first prior candle was UP
+    returns_1m = prices.pct_change().dropna()
+    n          = len(returns_1m)
+    # prices_arr[i] is the closing price BEFORE returns_1m[i]
+    # (returns_1m starts at prices[1], so prices_arr[i] = prices.values[i])
+    prices_arr = prices.values
+    records    = []
+    prev_up_1m = True
 
-    for i in range(len(returns)):
-        r     = float(returns.iloc[i])
-        date  = returns.index[i]
+    for i in range(n):
+        r     = float(returns_1m.iloc[i])
+        date  = returns_1m.index[i]
         month = pd.Period(date, "M")
 
-        if prev_up:
+        if signal == "1m":
+            trade = prev_up_1m
+        elif signal == "6m":
+            # 6m return ending at prior month: prices_arr[i] / prices_arr[i-6] - 1
+            trade = bool(prices_arr[i] >= prices_arr[i - 6]) if i >= 6 else True
+        else:   # 'none'
+            trade = True
+
+        if trade:
             prem   = get_premium(premiums, ticker, month, "put")
             pnl_pu = prem + min(r, 0.0)
             records.append({"date": date, "trade": True,
@@ -268,7 +390,7 @@ def _get_stock_monthly_data(
         else:
             records.append({"date": date, "trade": False,
                              "prem_frac": 0.0, "return_frac": r, "pnl_pu_frac": 0.0})
-        prev_up = (r >= 0.0)
+        prev_up_1m = (r >= 0.0)
 
     return pd.DataFrame(records)
 
@@ -278,29 +400,27 @@ def _get_stock_monthly_data(
 def run_portfolio(
     closes: pd.DataFrame,
     premiums: dict,
+    signal: str = "1m",
+    yearly_universe: "dict[int, set] | None" = None,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """
-    Portfolio-level recovery sizing.
+    Portfolio-level recovery sizing with point-in-time universe support.
+
+    signal        — momentum filter: '1m', '6m', or 'none'
+    yearly_universe — {year: set(tickers)} from build_yearly_universes().
+                    If None, all tickers in closes are used every year.
 
     Each month:
-      • All stocks with prev candle UP are eligible to trade (sell put).
-      • A single uniform_size is computed from the portfolio-level deficit:
-
-          uniform_size = ceil(portfolio_cumulated_loss% × 100
-                              / (n_active × avg_put_premium%))
-
-        → if every active stock collects full premium this month,
-          the portfolio deficit is exactly cleared.
-
-      • Skipped stocks (prev candle DOWN) contribute 0 this month but
-        their 1/100 capital allocation is untouched.
-
-    portfolio_episode_pnl resets to 0 when deficit is cleared.
+      • Only tickers in yearly_universe[year] are considered.
+      • Among those, stocks eligible by the momentum signal trade (sell put).
+      • uniform_size = ceil(portfolio_loss% × 100 / (n_active × avg_prem%))
+        so one good premium month clears the portfolio deficit.
+      • portfolio_episode_pnl resets to 0 when deficit is cleared.
     """
     # Step 1: per-stock base data (direction + per-unit PnL, no sizing)
     base: dict[str, pd.DataFrame] = {}
     for ticker in closes.columns:
-        df = _get_stock_monthly_data(ticker, closes[ticker], premiums)
+        df = _get_stock_monthly_data(ticker, closes[ticker], premiums, signal=signal)
         if not df.empty:
             base[ticker] = df.set_index("date")
 
@@ -322,8 +442,15 @@ def run_portfolio(
         portfolio_cumulated_loss = max(0.0, -portfolio_episode_pnl)   # portfolio %
         in_recovery              = portfolio_cumulated_loss > 0.0
 
-        # Active stocks this month
-        active = [t for t in base if date in base[t].index and bool(base[t].loc[date, "trade"])]
+        # Point-in-time universe for this year
+        year      = date.year
+        universe  = yearly_universe.get(year, set(base.keys())) if yearly_universe else set(base.keys())
+
+        # Active stocks: in universe + eligible by momentum signal
+        active   = [t for t in base
+                    if t in universe
+                    and date in base[t].index
+                    and bool(base[t].loc[date, "trade"])]
         n_active = len(active)
 
         # ── Uniform size ──────────────────────────────────────────────────────
@@ -345,6 +472,8 @@ def run_portfolio(
         month_portfolio_pnl = 0.0
 
         for ticker in base:
+            if ticker not in universe:
+                continue          # outside point-in-time universe this year
             if date not in base[ticker].index:
                 continue
             row    = base[ticker].loc[date]
@@ -713,6 +842,92 @@ def trace_stock(ticker: str, premiums: dict) -> None:
     print(f"{'='*105}\n")
 
 
+# ── Strategy Comparison ────────────────────────────────────────────────────────
+
+def compare_strategies(
+    closes: pd.DataFrame,
+    premiums: dict,
+    yearly_universe: "dict[int, set] | None" = None,
+) -> dict:
+    """
+    Run three momentum-filter variants and print a side-by-side comparison.
+
+    Variants:
+      no_filter — always sell PUT (no momentum condition)
+      mom_1m    — sell PUT only when previous 1-month candle was UP
+      mom_6m    — sell PUT only when 6-month return (ending prior month) > 0
+
+    Returns dict: key → (label, portfolio_df, risk_stats, stock_results)
+    """
+    configs = [
+        ("no_filter", "none", "No momentum filter (always sell PUT)"),
+        ("mom_1m",    "1m",   "1M momentum: sell PUT if prev month UP"),
+        ("mom_6m",    "6m",   "6M momentum: sell PUT if 6m return > 0"),
+    ]
+
+    all_results: dict = {}
+
+    for key, signal, label in configs:
+        print(f"\n{'─'*60}")
+        print(f"  Running: {label}")
+        print(f"{'─'*60}")
+        stock_results, portfolio_df = run_portfolio(
+            closes, premiums,
+            signal=signal,
+            yearly_universe=yearly_universe,
+        )
+        risk = compute_risk_stats(portfolio_df)
+        all_results[key] = (label, portfolio_df, risk, stock_results)
+        print(f"  → Done. Ann return: {risk['ann_return_pct']:.2f}%  "
+              f"Sharpe: {risk['sharpe_4pct_rf']:.3f}  "
+              f"MaxDD: {risk['max_drawdown_pct']:.2f}%")
+
+        # Save per-strategy portfolio CSV
+        portfolio_df.to_csv(f"portfolio_{key}.csv", index=False)
+
+    # ── Comparison table ──────────────────────────────────────────────────────
+    print("\n" + "=" * 100)
+    print("  STRATEGY COMPARISON  —  sell PUT only (3 momentum filters)")
+    print("=" * 100)
+
+    col_w = 36
+    hdr_fields = [
+        ("Strategy",     col_w),
+        ("AnnRet%",       8),
+        ("AnnVol%",       8),
+        ("Sharpe",        7),
+        ("Sortino",       7),
+        ("MaxDD%",        7),
+        ("Calmar",        7),
+        ("Win%",          6),
+        ("Best%",         7),
+        ("Worst%",        7),
+    ]
+    header = "".join(f"{name:>{w}}" for name, w in hdr_fields)
+    print(header)
+    print("-" * len(header))
+
+    for key, signal, label in configs:
+        _, _, risk, _ = all_results[key]
+        row = (
+            f"{label:<{col_w}}"
+            f"{risk['ann_return_pct']:>{8}.2f}"
+            f"{risk['ann_vol_pct']:>{8}.2f}"
+            f"{risk['sharpe_4pct_rf']:>{7}.3f}"
+            f"{risk['sortino_4pct_rf']:>{7}.3f}"
+            f"{risk['max_drawdown_pct']:>{7}.2f}"
+            f"{risk['calmar']:>{7}.3f}"
+            f"{risk['win_rate_pct']:>{6}.1f}"
+            f"{risk['best_month_pct']:>{7}.2f}"
+            f"{risk['worst_month_pct']:>{7}.2f}"
+        )
+        print(row)
+
+    print("=" * 100)
+
+    return all_results
+
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -727,37 +942,56 @@ def main() -> None:
         trace_stock(ticker, premiums)
         return
 
-    tickers = TOP100_TICKERS[:TOP_N]
+    # ── Broader universe: 2024 top-100 + historical large caps ───────────────
+    broader = list(dict.fromkeys(TOP100_TICKERS + EXTRA_HISTORICAL))
 
-    # 1. Fetch price data
-    closes = fetch_monthly_prices(tickers, START_DATE, END_DATE)
+    # 1. Fetch price data for broader universe
+    closes = fetch_monthly_prices(broader, START_DATE, END_DATE)
 
-    # 2. Simulate per stock + aggregate portfolio
-    print("Running strategy simulation …")
-    stock_results, portfolio_df = run_portfolio(closes, premiums)
-    print(f"  → Simulated {len(stock_results)} stocks")
+    # 2. Build point-in-time universes (top-100 per year)
+    yearly_universe = build_yearly_universes(closes, n=TOP_N)
 
-    # 3. Summary statistics
+    # 3. Run all three strategy variants and print comparison
+    all_results = compare_strategies(closes, premiums, yearly_universe=yearly_universe)
+
+    # 4. Detailed output for the 1M-momentum variant (primary strategy)
+    label, portfolio_df, risk_stats, stock_results = all_results["mom_1m"]
+    print(f"\n{'='*72}")
+    print(f"  DETAILED RESULTS — {label}")
+    print(f"{'='*72}")
     summary = compute_summary(stock_results, portfolio_df)
-
-    # 4. Risk statistics
-    risk_stats = compute_risk_stats(portfolio_df)
-
-    # 5. Print reports
     print_summary(summary, portfolio_df)
     print_monthly_table(portfolio_df)
     print_risk_stats(risk_stats)
 
-    # 6. Save outputs
+    # 5. Save outputs (1M strategy)
     print("\nSaving outputs …")
     summary.to_csv("summary.csv", index=False)
     portfolio_df.to_csv("portfolio_pnl.csv", index=False)
     save_history_csv(stock_results)
 
-    print(f"\nOutputs written:")
-    print("  summary.csv        — per-stock + portfolio summary statistics")
-    print("  portfolio_pnl.csv  — monthly portfolio return series")
-    print("  history.csv        — full trade history (one row per stock × month)")
+    # Also save no_filter and 6m stock results
+    _, pf_nf, _, sr_nf = all_results["no_filter"]
+    save_history_csv.__wrapped__ = None  # no-op attribute
+    pd.concat(
+        [df.assign(ticker=t) for t, df in sr_nf.items()],
+        ignore_index=True,
+    ).sort_values(["date", "ticker"]).to_csv("history_no_filter.csv", index=False)
+
+    _, pf_6m, _, sr_6m = all_results["mom_6m"]
+    pd.concat(
+        [df.assign(ticker=t) for t, df in sr_6m.items()],
+        ignore_index=True,
+    ).sort_values(["date", "ticker"]).to_csv("history_mom_6m.csv", index=False)
+
+    print("\nOutputs written:")
+    print("  summary.csv            — per-stock + portfolio summary (1M momentum)")
+    print("  portfolio_pnl.csv      — monthly returns (1M momentum)")
+    print("  history.csv            — full trade history (1M momentum)")
+    print("  portfolio_no_filter.csv — monthly returns (no filter)")
+    print("  portfolio_mom_6m.csv   — monthly returns (6M momentum)")
+    print("  history_no_filter.csv  — trade history (no filter)")
+    print("  history_mom_6m.csv     — trade history (6M momentum)")
 
 
 if __name__ == "__main__":
