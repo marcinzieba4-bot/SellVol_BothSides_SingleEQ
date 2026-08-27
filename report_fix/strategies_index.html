@@ -93,6 +93,8 @@ function loadStrategy(id,btn){
   if(_current===id){showOverview();return;}
   var content=_CONTENT[id];
   if(!content){
+    var _pages={"insidespx":"/strategies/insidespx-momentum/"};
+    if(_pages[id]){window.location.href=_pages[id];return;}
     document.getElementById("strategy-content").innerHTML='<div style="padding:4rem;text-align:center;color:#888">Coming Soon</div>';
     return;
   }
