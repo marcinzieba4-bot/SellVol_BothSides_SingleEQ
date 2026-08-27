@@ -42,3 +42,14 @@ aws cloudfront create-invalidation --distribution-id <DIST_ID> --paths "/strateg
 - Strategy-library card updated from the old Call/Put recovery numbers to
   the 1×/4× numbers; standalone detail page rebuilt to match the
   /strategies/ page.
+
+## Client-side navigation fix (2026-08-27)
+
+Navigating Research → Strategies inside the app used to render an old
+placeholder ("content in preparation"): the Next.js router was fetching the
+stale RSC payload `veerock-site/static/strategies/index.txt` (from the
+original app build) instead of loading the hand-deployed static HTML, so the
+old in-bundle strategies route rendered. Fix: that `index.txt` was removed
+(backup: `veerock-site/backups/20260827-strategies-index.txt`). With a
+non-RSC response on that path, the router falls back to a full page load of
+`/strategies/`, which always serves the current static page.
