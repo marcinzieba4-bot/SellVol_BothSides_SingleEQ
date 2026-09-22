@@ -1,0 +1,57 @@
+# InsideSPX Momentum — adversarial audit (Sep 2026)
+
+Run `python3 critical_audit.py` (needs scratchpad data: fedfunds2.csv, spy_vix.json,
+vixcls.csv — refetchable from FRED / the yfinance-data-fetcher Lambda).
+Window: Feb 2015 – Feb 2026, 133 months, extended history.
+
+## Does it really earn money? Mostly no — it earns beta, cash yield, and data optimism.
+
+1. **Decomposition (1×):** +8.0%/yr = 2.0% Fed-Funds cash yield + 5.9% option P&L
+   (Sharpe 1.33 stand-alone). SPY buy-and-hold over the same window: +13.7%/yr.
+2. **It is upside beta, not alpha.** Option P&L has beta 0.22 to SPY (corr 0.75).
+   CAPM alpha +2.7%/yr (t=2.97), but regressed on max(SPY,0) — i.e., what a plain
+   SPY call position delivers — alpha is NEGATIVE (−2.6%/yr, t=−1.9). A 30% SPY /
+   70% cash portfolio earns ~7.5%/yr with similar drawdown to the 1× strategy's 8.0%.
+3. **The momentum filter destroys value.** Signal-NEGATIVE names returned MORE the
+   next month than signal-positive names (+1.66% vs +1.03% raw; call payoff 4.04%
+   vs 3.28%, t=7.9): classic 1-month reversal. The filter systematically discards
+   the better half of the universe. (Real post-loss IV is higher, which would eat
+   some of the reversal, but the raw-return gap stands.)
+4. **The proxy-premium era carries the backtest.** Feb15–Aug20 (synthetic VIX-scaled
+   premiums): option P&L +8.1%/yr, Sharpe 1.97. Sep20–Feb26 (real-ish data):
+   +3.65%/yr, Sharpe 0.79. The half with market prices earns less than half.
+5. **Premiums look too cheap.** Median implied vol backed out of premiums paid: 19%;
+   34% of trades below 15% IV (realistic S&P-100 1M ATM IV: 18–45%). Put premiums
+   are used as call premiums, omitting carry (r − div): ~0.6%/yr overstatement at 1×.
+   No transaction costs: ~58 single-stock option trades/month ≈ another ~0.5–1%/yr.
+   → honest 1× option-only edge ≈ **~2%/yr over cash**, and it is mostly upside beta.
+6. **Concentration:** top-10 months = 47% of all option P&L; top-3 = 18%.
+7. **Recovery sizing is a martingale.** Bootstrap (10k × 133mo, iid — which
+   UNDERSTATES clustered drawdowns): 16% of paths need premium outlay >100% of
+   capital at some point (median path peaks at 36%, 99th pct 787%); 3% lose more
+   than the starting capital. The +2,341% headline is one path of a rule whose tail
+   is ruin; April 2025 already ran it to size 126 and 41% of capital in premiums.
+
+## Short SPY 1M calls overlay (requested test)
+
+Long 1× momentum stock calls + short SPY calls, notional-matched to the long leg.
+SPY has no options data in the bucket, so SPY premiums are priced off VIX
+(ATM ≈ 0.4·(VIX/100)·√(1/12); VIX is the 30-day SPX IV — realistic, note this is a
+*stricter* standard than the long leg's proxy premiums).
+
+Option P&L only, 133 months:
+
+| | ann | vol | Sharpe (0RF) | maxDD | beta | alpha (t) |
+|---|---|---|---|---|---|---|
+| long calls alone (1×) | +5.9% | 4.4% | 1.33 | −8.0% | 0.22 | +2.7%/yr (3.0) |
+| short SPY ATM alone | −0.4% | 4.0% | −0.11 | −12.0% | | |
+| **overlay ATM** | **+5.6%** | **2.3%** | **2.47** | **−1.7%** | **0.02** | **+5.3%/yr (7.5)** |
+| overlay 30-delta | +8.4% | 3.5% | 2.38 | −4.1% | 0.14 | +6.1%/yr (7.0) |
+
+Real-data era only (Sep20–Feb26): overlay ATM +3.9%/yr at 2.3% vol (Sharpe 1.69,
+maxDD −1.7%); 30-delta +6.4%/yr, Sharpe 1.76. The hedge is the one genuinely
+interesting result: it converts leveraged upside beta into a market-neutral
+dispersion/relative-momentum book — sell index upside, own single-stock upside.
+Same caveats apply (long-leg premium optimism, ~0.6%/yr carry, costs, short-call
+margin): a realistic expectation is ~2–3%/yr over cash at ~2.3% vol, not the
+headline. The ATM version is the cleaner hedge; 30-delta keeps residual beta.
