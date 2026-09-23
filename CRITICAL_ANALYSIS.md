@@ -169,3 +169,18 @@ Cohort-expiry accounting smooths marks; live product would see the crisis
 gains earlier (mark-to-market vega repricing) and larger (vol-of-vol convexity
 not modeled), which is consistent with the sharp crisis spikes seen in
 comparable listed products.
+
+## Final portfolio: 50% SPY + 50% levered dispersion sleeve (2007-2026, GS costs)
+
+| | ann | vol | Sharpe | maxDD | beta |
+|---|---|---|---|---|---|
+| 100% SPY | +10.6% | 15.3% | 0.69 | -50.8% | 1.00 |
+| 50/50 with 10x sleeve | +18.5% | 15.1% | 1.22 | -29.3% | 0.58 |
+| 50/50 with 5x sleeve | +12.5% | 10.3% | 1.21 | -26.9% | 0.54 |
+
+Same vol as SPY, ~+8pp/yr, half the drawdown; Sharpe plateaus at ~5x.
+Sleeve at 10x: ~6%/mo premium outlay, short SPY call notional ~450% of
+capital -> portfolio-margin/PB structure only. Model error scales 10x;
+recommended start 3-5x with monthly leverage reset (never loss-scaled),
+scale up only after live tracking confirms pricing. Worst months at 10x:
+Oct08 -10.2%, Jun23 -7.8%, Mar20 -7.5%; losing years 2008 -9.0, 2022 -10.3.
