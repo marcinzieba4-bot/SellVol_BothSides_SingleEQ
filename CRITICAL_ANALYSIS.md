@@ -203,3 +203,14 @@ vol faster than return. Mechanics: ~13% of total capital in premiums each
 month, short SPY call notional ~900% of total capital, sleeve standalone
 maxDD -84% - a single mis-modeled month at 20x is fatal in practice.
 Assessment: 20x is past the efficient point; 10x was already the stretch case.
+
+### Rebalance policy for the 50/50 portfolio (20x sleeve)
+
+Previously reported 50/50 stats already assume MONTHLY rebalance. Comparison:
+monthly +30.1%/26.5% vol/Sharpe 1.14/DD -47.2%/worst -19.0% (155x);
+annual (Dec) +31.7%/27.3%/1.16/-45.4%/worst -23.7% (194x);
+no rebalance +38.5%/47.2%/0.82/DD -83.2%/worst -44.2% (517x) - weights drift
+to 99% sleeve (91% at 10x), i.e. the un-rebalanced portfolio degenerates into
+the standalone levered sleeve. Monthly vs annual is second-order (10x: Sharpe
+1.22 vs 1.24); the essential discipline is the monthly reset of sleeve
+leverage to target from current equity, never loss-scaled.
