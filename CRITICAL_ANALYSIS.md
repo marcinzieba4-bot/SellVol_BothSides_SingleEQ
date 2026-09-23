@@ -214,3 +214,16 @@ to 99% sleeve (91% at 10x), i.e. the un-rebalanced portfolio degenerates into
 the standalone levered sleeve. Monthly vs annual is second-order (10x: Sharpe
 1.22 vs 1.24); the essential discipline is the monthly reset of sleeve
 leverage to target from current equity, never loss-scaled.
+
+### Weekly rebalance (real weekly SPY, sleeve accrual bounded two ways)
+
+Sleeve P&L books at monthly expiries, so intra-month marks are approximated:
+"smooth" spreads the month's sleeve return evenly across its weeks (understates
+sleeve vol), "expiry" books it all in expiry week (overstates lumpiness); the
+truth sits between. 20x sleeve, weekly grid 2007-2026:
+expiry accrual - weekly reb +30.3%/Sharpe 1.12/DD -49.7% vs monthly reb
++29.9%/1.12/-49.2%; smooth accrual - weekly +27.3% vs monthly +29.9%.
+10x: weekly and monthly within 0.3-0.7pp/yr on every metric.
+Conclusion: weekly rebalancing is indistinguishable from monthly (differences
+are within the accrual-approximation error); no evidence it adds value, and
+it adds 4x the rebalancing trades. Monthly reset remains the recommendation.
