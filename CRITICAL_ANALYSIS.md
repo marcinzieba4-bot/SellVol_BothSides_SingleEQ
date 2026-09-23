@@ -73,3 +73,24 @@ deployment incl. cash at FFR:
 
 Each 2.5pp of half-spread costs ~2.3%/yr. Window contains no true crash
 (model estimate for 2008-10: about -5% in one month at full deployment x scale).
+
+## Variant tests on real VolVue IVs (2007-2026, hedged vs SPY, option P&L)
+
+| variant | ann | Sharpe | maxDD | Calmar | alpha t | Sep20+ ann |
+|---|---|---|---|---|---|---|
+| calls-only ATM, all names | +1.94% | 0.68 | -15.0% | 0.13 | 3.2 | -0.2% |
+| calls+puts ATM, all names | +0.64% | 0.14 | -30.1% | 0.02 | 0.8 | -0.7% |
+| calls-only ATM, momentum | +1.07% | 0.57 | -9.5% | 0.11 | 2.7 | +0.2% |
+| calls-only 40-delta | +2.14% | 0.79 | -10.5% | 0.20 | 3.5 | +0.5% |
+| calls-only 30-delta | +2.69% | 1.08 | -7.1% | 0.38 | 4.2 | +2.0% |
+| calls-only 20-delta | +2.79% | 1.36 | -4.8% | 0.59 | 5.0 | +2.8% |
+| 30-delta strangle | +1.89% | 0.54 | -17.2% | 0.11 | 2.2 | +1.6% |
+| 30-delta calls, momentum | +1.63% | 1.03 | -3.5% | 0.47 | 4.0 | +1.1% |
+
+Findings: (1) the put wing destroys value - calls-only dominates calls+puts;
+(2) the momentum filter still subtracts vs all names (breadth wins);
+(3) going OTM helps monotonically (20-delta best, and the only variant clearly
+positive in the recent era). Caveat: wings priced with ATM-level IVs (no skew);
+index call skew is steeper than single-name skew, which would cheapen the sold
+index wing and haircut the OTM advantage by roughly 0.5-1%/yr; OTM spreads are
+also wider in premium terms.
