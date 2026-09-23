@@ -123,3 +123,20 @@ metric (+2.2%/yr, maxDD -8.6% vs -14.1%, GFC +9.1% vs -3.8%): single-name puts
 are worse crash protection than index puts at 1.5-1.9x the IV (correlation ->1
 in crashes). Note: expiry-cashflow accounting smooths vol; Sharpe/Calmar of
 both overstated in absolute terms, comparison unaffected.
+
+## Delta-hedged put ladder + overlays on SPY buy & hold
+
+Fully delta-hedged (cohort P&L = vega x (realized - implied), booked at expiry):
+combo +1.61%/yr, maxDD -4.5%, GFC +2.7% (vs -3.8% unhedged) - hedging fixes the
+V-crash timing failure, and the single-name version now BEATS the SPY-only
+control (+1.61 vs +1.24; 2022 +1.75 vs +0.37) because DH monetizes each name's
+realized (idiosyncratic) vol rather than terminal moneyness. Caveats: vega
+approximation ignores gamma path-dependence and hedging costs; absolute Sharpe
+overstated.
+
+Overlays on SPY B&H (2007-2026 monthly): SPY 10.6%/0.69 Sharpe/DD -51%;
++ 30d call dispersion overlay 13.4%/0.85; + DH ladder 12.3%/0.79; + both
+15.1%/0.94/DD -48%; 50% SPY + dispersion 8.2%/0.98/DD -28%. The dispersion
+overlay adds ~+2.8%/yr at ~zero extra vol (corr ~0); note SPY + short SPY
+calls = index covered call, so the overlay implements as covered call + long
+single-name calls (no naked shorts).
