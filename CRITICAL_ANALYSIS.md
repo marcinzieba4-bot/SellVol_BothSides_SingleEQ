@@ -102,3 +102,12 @@ the unfiltered 90-name book (1.05 / 0.36). 1M ranking ~0; 12-1 ~0; bottom-10
 LOSERS beat every top-10 (Sharpe 0.73). Momentum winners' call IVs are already
 marked up; 10 names forfeits the breadth that powers the dispersion edge.
 Recommendation stands: full universe, 30-delta, matched strikes, no ranking.
+
+## SPY bull put spread + long single-name calls (real IVs, 2007-2026)
+
+Sell SPY ATM put / buy 25d (or 10d) put, + long 30d single-name calls:
+ann +3.0% at beta 0.49, maxDD -30%, alpha t = -3.9 (significantly NEGATIVE -
+worse than 0.5x SPY+cash). Skew costs ~2.8%/yr (no-skew pricing shows +5.8%):
+the bought OTM put is the most overpriced option in the market. Both legs lose
+together in crashes (five ~-6% months in 2008-09/2020). Structure rejected;
+matched-strike call dispersion remains the only positive-alpha construction.
