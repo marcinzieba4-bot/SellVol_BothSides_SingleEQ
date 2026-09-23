@@ -140,3 +140,17 @@ Overlays on SPY B&H (2007-2026 monthly): SPY 10.6%/0.69 Sharpe/DD -51%;
 overlay adds ~+2.8%/yr at ~zero extra vol (corr ~0); note SPY + short SPY
 calls = index covered call, so the overlay implements as covered call + long
 single-name calls (no naked shorts).
+
+## Hedge frequency (Monte Carlo; no 20y intraday history exists in the data)
+
+Per 6M 20d single-name option (GBM, sig=30%, 1.5bp stock half-spread):
+weekly hedge: residual sd 1.01%, turnover 1.5x notional, cost 2.3bp;
+daily: 0.48% / 2.8x / 4.2bp; 30-min: 0.16% / 9.1x / 13.7bp (turnover ~ sqrt(N)).
+At book level (~1,300 concurrent positions) residual hedge noise diversifies to
+<0.1%/yr already at weekly, while costs scale linearly: 30-min hedging of the
+single-name book adds ~0.3%/yr of pure cost (~20% of the strategy's edge) to
+remove noise that is already negligible. Overnight gaps/earnings (~35% of
+single-name variance) are unhedgeable at any frequency - benign for the long
+gamma leg, irreducible for the short. Optimum: daily or delta-band hedging for
+the 50 single names; 30-minute (or band) hedging only for the short SPY leg
+via ES futures at ~0.1-0.3bp where intraday reactivity is nearly free.
