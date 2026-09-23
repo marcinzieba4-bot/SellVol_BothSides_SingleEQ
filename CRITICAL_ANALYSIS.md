@@ -55,3 +55,21 @@ dispersion/relative-momentum book — sell index upside, own single-stock upside
 Same caveats apply (long-leg premium optimism, ~0.6%/yr carry, costs, short-call
 margin): a realistic expectation is ~2–3%/yr over cash at ~2.3% vol, not the
 headline. The ATM version is the cleaner hedge; 30-delta keeps residual beta.
+
+## Both-sides dispersion with bid/ask spreads (real quotes, Sep 2020 - Feb 2026)
+
+S3 today holds option files for only 14 tickers (13 puts + NVDA calls; the other
+~28 optionsDataCall directories are empty placeholders; all prices are 'last'
+prints, no mid/bid/ask columns). Treating last as mid, buying single-name
+straddles at mid*(1+h), selling SPY straddles at mid*(1-0.5%), scaled to full
+deployment incl. cash at FFR:
+
+| h (half-spread) | ann | Sharpe | maxDD | Calmar |
+|---|---|---|---|---|
+| 0%   | +17.0% | 2.55 | -3.7% | 4.55 |
+| 2.5% | +14.5% | 2.16 | -4.0% | 3.60 |
+| 5%   | +12.2% | 1.82 | -4.3% | 2.84 |
+| 7.5% | +10.1% | 1.49 | -4.8% | 2.11 |
+
+Each 2.5pp of half-spread costs ~2.3%/yr. Window contains no true crash
+(model estimate for 2008-10: about -5% in one month at full deployment x scale).
