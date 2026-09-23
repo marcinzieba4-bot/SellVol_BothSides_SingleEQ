@@ -184,3 +184,22 @@ capital -> portfolio-margin/PB structure only. Model error scales 10x;
 recommended start 3-5x with monthly leverage reset (never loss-scaled),
 scale up only after live tracking confirms pricing. Worst months at 10x:
 Oct08 -10.2%, Jun23 -7.8%, Mar20 -7.5%; losing years 2008 -9.0, 2022 -10.3.
+
+### 20x sleeve variant (same 50/50 construction)
+
+| | ann | vol | Sharpe | maxDD | beta | worst mo |
+|---|---|---|---|---|---|---|
+| 50/50 with 10x sleeve | +18.5% | 15.1% | 1.22 | -29.3% | 0.58 | -10.2% |
+| 50/50 with 20x sleeve | +30.1% | 26.5% | 1.14 | -47.2% | 0.67 | -19.0% |
+| 20x sleeve standalone | +43.6% | 49.0% | 0.89 | -83.7% | 0.34 | -44.4% |
+
+20x: Sortino 2.32, win 62%, VaR95 -8.5%, CVaR95 -11.9%; total 155x vs SPY
+6.9x (2007-2026, monthly 50/50 rebalance). Crisis flips sign vs 10x: 2008
++1.6% (sleeve +57.9% offsets SPY) but model-error months dominate instead -
+worst are Jun23 -19.0%, Apr20 -15.1%, Apr21/Nov23 -13.5%; losing years 2018,
+2020 (-12.2%), 2022 (-14.4%), 2023 (-10.7%). Sharpe now DECLINES with
+leverage (1.22 -> 1.14) and maxDD nearly matches SPY: past 10x, leverage adds
+vol faster than return. Mechanics: ~13% of total capital in premiums each
+month, short SPY call notional ~900% of total capital, sleeve standalone
+maxDD -84% - a single mis-modeled month at 20x is fatal in practice.
+Assessment: 20x is past the efficient point; 10x was already the stretch case.
