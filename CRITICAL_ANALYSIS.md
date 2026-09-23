@@ -94,3 +94,11 @@ positive in the recent era). Caveat: wings priced with ATM-level IVs (no skew);
 index call skew is steeper than single-name skew, which would cheapen the sold
 index wing and haircut the OTM advantage by roughly 0.5-1%/yr; OTM spreads are
 also wider in premium terms.
+
+## Top-10 momentum calls + short SPY calls (real IVs, 2007-2026)
+
+Best top-10 variant (6M lookback, 30-delta): Sharpe 0.51, Calmar 0.19 - half
+the unfiltered 90-name book (1.05 / 0.36). 1M ranking ~0; 12-1 ~0; bottom-10
+LOSERS beat every top-10 (Sharpe 0.73). Momentum winners' call IVs are already
+marked up; 10 names forfeits the breadth that powers the dispersion edge.
+Recommendation stands: full universe, 30-delta, matched strikes, no ranking.
