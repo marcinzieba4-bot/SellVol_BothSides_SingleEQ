@@ -111,3 +111,15 @@ worse than 0.5x SPY+cash). Skew costs ~2.8%/yr (no-skew pricing shows +5.8%):
 the bought OTM put is the most overpriced option in the market. Both legs lose
 together in crashes (five ~-6% months in 2008-09/2020). Structure rejected;
 matched-strike call dispersion remains the only positive-alpha construction.
+
+## Weekly put-dispersion ladder (long 6M 20d single puts 1.25x / short 3M 30d SPY puts 1x)
+
+Real 90d/180d put IVs, weekly cohorts held to expiry, 2006-2026, skewed wings:
+combo +1.14%/yr (short SPY put leg +5.3%, long single puts -4.0%); 2022 +6.5%
+but COVID -7.3% and 2008 calendar -12.7% - the 3M short leg realizes crash
+losses before 6M crash-entry cohorts pay (they expire into recovery).
+Control: the SAME ladder with SPY 6M 20d puts as the hedge beats it on every
+metric (+2.2%/yr, maxDD -8.6% vs -14.1%, GFC +9.1% vs -3.8%): single-name puts
+are worse crash protection than index puts at 1.5-1.9x the IV (correlation ->1
+in crashes). Note: expiry-cashflow accounting smooths vol; Sharpe/Calmar of
+both overstated in absolute terms, comparison unaffected.
