@@ -154,3 +154,18 @@ single-name variance) are unhedgeable at any frequency - benign for the long
 gamma leg, irreducible for the short. Optimum: daily or delta-band hedging for
 the 50 single names; 30-minute (or band) hedging only for the short SPY leg
 via ES futures at ~0.1-0.3bp where intraday reactivity is nearly free.
+
+## Mixed-frequency DH ladder (singles daily-hedged, SPY leg 30-min via ES)
+
+Daily realized vols, costs deducted (10.5bp/yr singles + 5bp SPY futures):
+net +1.27%/yr, vol 0.8%, maxDD -4.1%, Calmar 0.31, beta +0.01; stable across
+halves (1.31/1.24). Crisis: GFC +2.8%, COVID window +2.5%, 2022 +1.4%; long
+leg alone GFC/COVID ~+6.7%. Apr-2025: net -1.25% (realized spike too brief for
+6M vega, short 3M SPY leg paid the move). The big-upside tail products the
+user references are NET LONG vol with far-OTM wings and no short leg - this
+book deliberately sells that convexity back via the SPY leg to earn carry;
+at 2x long notional crisis gains roughly double but carry drops toward zero.
+Cohort-expiry accounting smooths marks; live product would see the crisis
+gains earlier (mark-to-market vega repricing) and larger (vol-of-vol convexity
+not modeled), which is consistent with the sharp crisis spikes seen in
+comparable listed products.
