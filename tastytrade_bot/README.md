@@ -67,6 +67,6 @@ leverage: 5            # sleeve leverage L
 short_leg: es_span     # es_span | spy_naked | spy_regt
 rotation: auto         # auto: on when equity < 276000 * L / 5
 underlying_hedge: MES  # tastytrade has CME micros; SPY shares also fine
-deltas: {long: 0.30, wing: 0.10, spy_short: 0.30, spy_wing: 0.02}
+deltas: {long: 0.30, wing: 0.10, spy_short: 0.30, spy_wing: 0.01}
 max_margin_frac: 0.60
 sandbox: true
