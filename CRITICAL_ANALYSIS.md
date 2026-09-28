@@ -227,3 +227,26 @@ expiry accrual - weekly reb +30.3%/Sharpe 1.12/DD -49.7% vs monthly reb
 Conclusion: weekly rebalancing is indistinguishable from monthly (differences
 are within the accrual-approximation error); no evidence it adds value, and
 it adds 4x the rebalancing trades. Monthly reset remains the recommendation.
+
+### Retail vs institutional quoting for the 50/50 portfolio
+
+All previously reported 50/50 numbers used institutional (GS) quoting
+(~0.2-0.3%/yr per 1x of sleeve). Cost model: annual traded premium ~19.8%/yr
+per 1x (1.27%/mo entry x ~1.3 for ITM closes/rolls) x half-spread h.
+GS h~1.5% of premium -> 0.30%/yr per 1x; IBKR retail h~4% -> 0.79%;
+Saxo/crossing screens h~8% -> 1.58%. Because cost scales with leverage while
+vol does not, quoting venue moves Sharpe/Calmar materially:
+
+10x sleeve: GS +17.9%/Sharpe 1.18/Calmar 0.61; IBKR +15.1%/1.00/0.50;
+Saxo +10.7%/0.70/0.33. 20x: GS 1.09/0.60; IBKR 0.86/0.45; Saxo 0.51/0.21
+(DD -64%). 5x: GS 1.18; IBKR 1.05; Saxo 0.84.
+
+Feasibility dominates costs at retail anyway: short SPY call notional is
+~45% of total capital per 1x of sleeve (450% at 10x, 900% at 20x). Only
+L<=1.1x is fully covered by the 50% SPY holding (a covered call); beyond
+that the calls are naked index shorts - IBKR portfolio margin realistically
+supports ~3-5x (house stress tests bind well before 10x), Saxo effectively
+none at size. Conclusion: 10-20x versions are institutional (PB) products;
+the retail (IBKR) version of this strategy is the 3-5x sleeve at Sharpe
+~1.0-1.05, Calmar ~0.4-0.45 - roughly 0.13-0.18 of Sharpe given away to
+retail spreads plus the leverage cap.
