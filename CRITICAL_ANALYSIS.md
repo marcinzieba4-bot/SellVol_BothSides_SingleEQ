@@ -461,3 +461,24 @@ version gives up ~0.1 Sharpe and ~0.2 Calmar, keeps the defensive profile.
 SPY legs unaffected ($77k/contract: 5-6 short calls; hedge in SPY shares).
 Note: stays above the $100k PM revocation line only barely - fund $110-120k
 and size the sleeve off $100k to keep the buffer.
+
+### Sub-$100k brokers (EU) and the Reg-T variant
+
+The $100k floor is FINRA's portfolio-margin minimum, not an IBKR quirk - no
+US-regulated broker escapes it. Two ways around for EU clients:
+1. EU-domiciled brokers with own margin models: Exante (CySEC/MFSA, EUR 10k
+   min, DMA to US option exchanges, dynamic leverage - verify short-option
+   permission for retail); Saxo (low min but strategy margin caps ~2-3x).
+   Freedom24: long-only options - unusable.
+2. Reg-T-compatible restructure at any broker (tastytrade - Poland/Germany/
+   NL eligible, ~$1-2k min, $1/contract; IBKR below $110k): make the short
+   SPY leg a defined-risk credit spread. Asymmetric wings tested:
+   singles 30-10 spreads + SPY 30d-5d credit: 5x Sharpe 0.93/Calmar 0.64
+   (5d wing too costly); SPY 30d-2d credit (very far wing): 3x +9.5%/Sharpe
+   1.44/Calmar 1.14 (halves 1.34/1.00), 5x +14.9%/1.35/1.05, worst month
+   -6.1%, Reg-T margin 22-37% of equity. The 2d wing costs only ~0.2 Sharpe
+   vs the naked-short PM version (1.54/1.31) and is CONSERVATIVELY priced
+   here (real index 2d call IV < flat-IV model). Rotation half-book handles
+   granularity down to ~$50-60k; $100k comfortable.
+Recommended sub-$100k setup: tastytrade (or IBKR Reg-T) + L30-10 singles /
+SPY 30-2 credit spread at 3-5x + rotating half-book + weekly SPY hedge.
