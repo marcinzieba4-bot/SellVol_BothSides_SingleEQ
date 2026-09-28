@@ -250,3 +250,39 @@ none at size. Conclusion: 10-20x versions are institutional (PB) products;
 the retail (IBKR) version of this strategy is the 3-5x sleeve at Sharpe
 ~1.0-1.05, Calmar ~0.4-0.45 - roughly 0.13-0.18 of Sharpe given away to
 retail spreads plus the leverage cap.
+
+## Retail product: liquid-30 dispersion (tenor/delta chosen for retail quoting)
+
+Retail quoting approaches GS-like only in: SPY options (any delta, h~0.5%),
+and 1M near-money options on the ~30 highest-dollar-volume mega-caps
+(h~1.5-3% of premium vs 4-10% further OTM / longer tenor / smaller names).
+Universe rebuilt point-in-time: top-30 by trailing-12m median dollar volume
+within the SPX top-100 (hand-picked mega-cap list showed +4.3%/yr gross but
+that is hindsight bias - PIT filter gives +2.97%, used throughout).
+
+1x book, 1M 30-delta, notional-matched short SPY 30d calls (2007-2026):
+PIT liquid-30 gross +2.97%/Sharpe 0.97; net retail (h=3%/0.5%, x1.3 exits
+= 0.71%/yr) +2.24%/Sharpe 0.73/Calmar 0.31, halves +3.6/+2.4 - vs broad
+90-name book net retail (h=6% at 30d) +1.41%/0.56. The liquid subset loses
+little gross edge (mega-cap IV ratio to SPY is as rich) and saves half the
+costs: at retail, liquidity selection beats breadth. 40d/ATM worse both
+gross and net; top-20 noisier (0.59), top-50 dilutes into wide quotes.
+
+RETAIL 50/50 PRODUCT (50% SPY B&H + 50% levered liquid-30 sleeve, IBKR):
+| L | ann | vol | Sharpe | maxDD | beta | worst mo |
+|---|---|---|---|---|---|---|
+| 1x (fully covered) | +7.5% | 8.1% | 0.92 | -27.6% | 0.52 | -8.6% |
+| 3x | +9.8% | 9.7% | 1.00 | -26.8% | 0.56 | -9.3% |
+| 5x | +12.0% | 11.9% | 1.00 | -28.4% | 0.60 | -9.9% |
+| 8x | +15.2% | 15.8% | 0.96 | -31.8% | 0.66 | -11.0% |
+GS reference on same book: 5x Sharpe 1.08, 10x 1.03 - the retail penalty on
+this construction is ~0.08 Sharpe (vs ~0.2 on the broad book).
+
+Recommended retail spec: monthly cycle; long 1M 30-delta calls on top-30
+dollar-volume names, ~3% notional each per 1x; short SPY 1M 30-delta calls,
+notional-matched (~90% per 1x); hold to expiry; leverage reset monthly from
+equity, never loss-scaled. L=1 is a covered-call-plus-calls structure with
+no margin dependency (Saxo-compatible); L=3-5 needs IBKR portfolio margin
+(short call notional 135-225% of capital). 5x: +12.0%/yr, Sharpe 1.00,
+worst months Oct08 -9.9%, Mar20 -7.6%; losing years 2008 -13.1, 2022 -19.5,
+2018 -6.4. Practical from ~$100k (1-2 contracts/name); ~60 tickets/month.
