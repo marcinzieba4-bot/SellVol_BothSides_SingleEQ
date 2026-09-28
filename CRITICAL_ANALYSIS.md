@@ -414,3 +414,29 @@ nowhere near the -5 to -8%/mo crash drag. The short-call leg works because
 rally losses are gradual and weekly-hedgeable; put losses are gap losses.
 CONCLUSION: no short puts anywhere in this product. The defensive profile
 (long idio vol, crisis-positive) is precisely what the put overlay sells.
+
+### Broker feasibility: IBKR vs Saxo, minimum size, client status
+
+Saxo: all instruments exist (US stock/ETF options, MES), but formula-based
+margin without cross-margining caps the sleeve at ~2-3x, commissions 2-4x
+IBKR, and lower leverage RAISES the granularity minimum (same 30-contract
+book over less levered equity): ~2x needs ~$690k for full fidelity. Verdict:
+IBKR product; Saxo only holds a diluted copy at twice the capital.
+
+Minimum size at IBKR (current prices, 2026-02 book: 1 contract/name = $6k
+min / $34k median / $118k max (LLY), sum $1.24M long notional):
+- Portfolio-margin account floor: $110k to enable, must stay >$100k
+  (regulatory; PM is mandatory at any leverage - the pure sleeve always
+  carries naked short SPY calls). This floor does NOT move with leverage.
+- Granularity floor scales ~1/L (exact-fit = $1.24M/(0.9L)):
+  L=3 ~$460k, L=5 ~$276k, L=8 ~$172k, L=10 ~$138k. At 5x with $100k only
+  14/30 names fit (33% weight error, effective 2.6x); $150k: 21/30;
+  $300k: 25/30; full 30 incl. $100k+/contract names needs ~$400k.
+- Margin usage scales ~L (PM est. ~5-7% equity per 1x): 5x ~25-35%,
+  8x ~40-55%, 10x tight. Higher leverage lowers the entry ticket but
+  shrinks stress headroom - and equity dipping under $100k revokes PM
+  (forced deleveraging), so run a buffer.
+Practical: $150k min (trimmed ~20-name book at 5-6x), $250-300k proper.
+Professional client status NOT required (IBKR PM + options permissions are
+retail); it only becomes relevant for EU retail wanting SPY ETF SHARES
+(PRIIPs) in the 50/50 variants - the final product holds none.
