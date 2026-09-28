@@ -389,3 +389,28 @@ BEST RETAIL VARIANTS (IBKR):
 Caveats: single-name 10d wings priced flat-IV (real call smile means selling
 them collects MORE - conservative); model error scales with leverage; 2nd-half
 Calmar ~1.05 is the realistic forward expectation, not 1.3.
+
+### Short OTM puts overlay - rejected on both return AND defensive profile
+
+Added to the max-Calmar sleeve (L30-10/S30 wk-hedge, 5x, IBKR, puts priced
+off iv_put_30): short SPY 1M 20d/30d puts at 0.9x notional, half-size 0.45x,
+and short single-name 20d puts (wn each). All destroy the product:
+| variant | ann | Sharpe | maxDD | Calmar | beta | worst mo |
+|---|---|---|---|---|---|---|
+| base | +17.7% | 1.54 | -13.6% | 1.31 | 0.37 | -7.0% |
+| +SPY 20d put 0.9x | +6.0% | 0.29 | -49.6% | 0.12 | 0.68 | -28.9% |
+| +SPY 30d put 0.9x | +8.2% | 0.38 | -47.6% | 0.17 | 0.71 | -29.9% |
+| +SPY 20d put 0.45x | +12.2% | 0.81 | -28.6% | 0.43 | 0.52 | -17.1% |
+| +single 20d puts | +5.3% | 0.27 | -43.3% | 0.12 | 0.80 | -28.5% |
+
+Defensive profile comparison (the decisive part): base is crisis-NEUTRAL to
+POSITIVE - 2008 +15.5%, Feb-Mar20 -3.1%, Apr25 +0.6%, SPY<-5% months mean
+-1.65%, worst crash month -7%. Every put overlay converts it into a crash
+seller: worst months relocate to Mar20 (-25 to -29%), Oct08, Apr25 (-13 to
+-27%); 2008 flips to -8...-29%; SPY<-5% months mean -4.6 to -9.5%/mo.
+Even half-size SPY puts cost two thirds of the Calmar. Flat-IV pricing
+understates real put premiums (put skew would add ~0.1-0.2%/mo collected),
+nowhere near the -5 to -8%/mo crash drag. The short-call leg works because
+rally losses are gradual and weekly-hedgeable; put losses are gap losses.
+CONCLUSION: no short puts anywhere in this product. The defensive profile
+(long idio vol, crisis-positive) is precisely what the put overlay sells.
