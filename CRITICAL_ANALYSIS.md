@@ -353,3 +353,39 @@ per-name CFD rebalancing (~30 tickets/day automated, short CFD notional
 via return, not DD control: no CFD ops, 4 option legs/name, Sortino 3.0,
 but beta ~0.9 and worst month -13 to -17%. All need portfolio margin; model
 error scales with L as before.
+
+### Max-Calmar retail hunt: regime filters rejected; SPY weight is the lever
+
+Regime filters that switch OFF the short SPY leg (SPY drawdown >10/15%,
+VIX>25/30, below 200d MA) all sharply REDUCE Calmar (L30-10/S30: 1.07
+unfiltered -> 0.24-0.42 filtered): the short leg earns most in turbulent
+months (rich premium) and hedges long-leg bleed; skipping 38 high-vol
+months forfeits far more than the rebound-rip losses avoided. Vol-selling
+exclusion makes no sense in this structure.
+
+The real Calmar lever is the SPY allocation: SPY B&H (own Calmar 0.21)
+dominates portfolio drawdown. Grid SPY weight x leverage (IBKR quoting,
+Calmar shown with 1st/2nd-half split):
+best structure = L30-10/S30 call spreads, weekly SPY book hedge:
+| allocation | ann | vol | Sharpe | Sortino | maxDD | Calmar | halves |
+|---|---|---|---|---|---|---|---|
+| 100% sleeve 5x | +17.7% | 11.5% | 1.54 | 3.36 | -13.6% | 1.31 | 1.51/1.12 |
+| 100% sleeve 8x | +27.8% | 18.4% | 1.51 | 3.29 | -21.4% | 1.30 | 1.56/1.06 |
+| 100% sleeve 10x | +34.5% | 23.0% | 1.50 | 3.27 | -26.4% | 1.31 | 1.60/1.05 |
+| 25/75 8x | +23.6% | 16.0% | 1.47 | 2.93 | -23.8% | 0.99 | 1.10/1.00 |
+| 50/50 12x | +26.0% | 18.8% | 1.38 | 2.50 | -32.3% | 0.80 | 0.86/0.92 |
+Calmar is FLAT in leverage (~1.3) for the pure sleeve - take the margin-
+comfortable 5x. L20-5/S20 tops at ~1.0, CFD-hedged at ~0.96: the 30-10
+spread book dominates. Beta at pure 5x: 0.37; worst month -7.0%.
+
+BEST RETAIL VARIANTS (IBKR):
+1. MAX CALMAR: 100% L30-10/S30 sleeve at 5x - +17.7%/yr, Sharpe 1.54,
+   Sortino 3.4, maxDD -13.6%, Calmar 1.31 (both halves >1.1), beta 0.37.
+   Per month: buy 30d call & sell 10d call on each of top-30 liquid names
+   (4.5%xL notional each side), sell SPY 30d calls 90%xL notional, weekly
+   SPY/MES net-delta hedge, monthly reset. IBKR PM comfortable at 5x.
+2. AGGRESSIVE: same at 8x - +27.8%/yr, Calmar 1.30, DD -21.4%, PM tight.
+3. WITH MARKET EXPOSURE: 25% SPY + 75% sleeve 8x - +23.6%/yr, Calmar 0.99.
+Caveats: single-name 10d wings priced flat-IV (real call smile means selling
+them collects MORE - conservative); model error scales with leverage; 2nd-half
+Calmar ~1.05 is the realistic forward expectation, not 1.3.
