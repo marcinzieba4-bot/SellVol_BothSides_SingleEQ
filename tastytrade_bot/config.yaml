@@ -1,0 +1,7 @@
+leverage: 5
+account_mode: pm        # pm | regt (regt adds the 2-delta SPY wing)
+rotation: auto
+underlying_hedge: SPY
+deltas: {long: 0.30, wing: 0.10, spy_short: 0.30, spy_wing: 0.02}
+max_margin_frac: 0.60
+sandbox: true

@@ -482,3 +482,24 @@ US-regulated broker escapes it. Two ways around for EU clients:
    granularity down to ~$50-60k; $100k comfortable.
 Recommended sub-$100k setup: tastytrade (or IBKR Reg-T) + L30-10 singles /
 SPY 30-2 credit spread at 3-5x + rotating half-book + weekly SPY hedge.
+
+### tastytrade API implementation + $400k parity
+
+tastytrade grants portfolio margin to international margin accounts with
+The Works level: $125k to enable, $100k EOD maintenance. So at $400k the
+FULL naked-short product runs there and risk stats are the same as IBKR -
+same NBBO exchanges and spreads; commissions marginally cheaper for this
+shape ($1/contract to open, $0 to close, capped/leg, vs IBKR ~$0.65 both
+ways) - difference <0.05%/yr at 5x. Only gap: no futures-lite hedge like
+MES matters not (SPY shares hedge is free-ish anyway); IBKR keeps an edge
+in stock-lending/CFD variants only.
+
+Bot skeleton committed under tastytrade_bot/ (README.md, bot.py,
+config.yaml): REST auth via env creds, nested option chains, BS
+delta-nearest strike selection, dry-run margin pre-check before every
+order (abort >60% usage), 2-leg vertical tickets with mid-walking limit
+execution, weekly book-delta hedge from the positions endpoint + DXLink
+greeks, monthly roll sized from current equity (never loss-scaled),
+granularity cutoff and rotation for small equity, PM-floor kill-switch at
+$135k/$110k. Remaining wiring: DXLink websocket quotes/greeks and cron.
+Test entirely on api.cert.tastyworks.com before production.
