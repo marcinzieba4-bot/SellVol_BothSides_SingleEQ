@@ -10,9 +10,15 @@ Monthly cycle (calendar month-end to month-end):
    (rotating 15-name half + granularity cutoff for accounts < ~$276k x L/5).
 2. Long leg: per name, buy 1M ~30-delta call / sell ~10-delta call
    (vertical), equal notional = 0.9 x L / N per name.
-3. Short leg: sell SPY 1M ~30-delta calls, total notional 0.9 x L.
-   PM accounts (>= $125k at tastytrade): naked. Reg-T accounts: add a long
-   ~2-delta SPY wing (credit spread) - costs ~0.1-0.2 Sharpe, caps risk.
+3. Short leg, three modes (config short_leg):
+   - es_span (DEFAULT, any account size): sell ~30-delta calls on ES/MES
+     futures options in the futures side of the account. SPAN margin is
+     risk-based with NO $100k/$125k floor -> full naked-short economics
+     (Sharpe ~1.54): MES below ~$300k notional need, ES above.
+   - spy_naked: SPY calls naked - needs PM ($125k+).
+   - spy_regt: SPY 30-delta/1-delta credit spread - pure equity options,
+     Reg-T at any size; the 1-delta wing costs almost nothing
+     (3x: Sharpe 1.55/Calmar 1.28; 5x: 1.46/1.19).
 4. Weekly: re-hedge net book delta with SPY shares (or MES elsewhere).
 5. Month-end: let expire / close ITM legs, reset leverage from equity,
    rebuild the book. NEVER scale up after losses.
@@ -58,9 +64,9 @@ Monthly cycle (calendar month-end to month-end):
 ## Config (config.yaml)
 
 leverage: 5            # sleeve leverage L
-account_mode: pm       # pm | regt  (regt adds the 2-delta SPY wing)
+short_leg: es_span     # es_span | spy_naked | spy_regt
 rotation: auto         # auto: on when equity < 276000 * L / 5
-underlying_hedge: SPY  # shares; MES not available at tastytrade
+underlying_hedge: MES  # tastytrade has CME micros; SPY shares also fine
 deltas: {long: 0.30, wing: 0.10, spy_short: 0.30, spy_wing: 0.02}
 max_margin_frac: 0.60
 sandbox: true

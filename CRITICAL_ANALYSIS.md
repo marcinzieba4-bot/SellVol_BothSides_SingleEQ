@@ -503,3 +503,26 @@ greeks, monthly roll sized from current equity (never loss-scaled),
 granularity cutoff and rotation for small equity, PM-floor kill-switch at
 $135k/$110k. Remaining wiring: DXLink websocket quotes/greeks and cron.
 Test entirely on api.cert.tastyworks.com before production.
+
+### Closing the Reg-T Sharpe gap at tastytrade: SPAN short leg / 1d wing
+
+Two reformulations recover the naked-short economics without PM:
+1. SHORT LEG ON FUTURES OPTIONS (recommended): sell ~30d calls on ES/MES
+   options instead of SPY. Options on futures are SPAN-margined (risk-based,
+   like PM) with NO account-size floor at tastytrade futures accounts
+   ("no minimum account balance"; The Works futures level for naked).
+   Payoff identical to short SPY calls (same index), ES quoting tighter
+   than SPY; stats = the full naked version: Sharpe 1.54, Calmar 1.31 at
+   5x. SPAN on a short 30d call ~2-2.5% of notional -> ~9-11% of equity at
+   5x. MES (1/10 ES) handles granularity below ~$300k of short notional.
+   Hedge leg also moves to MES futures. EU retail can trade CME futures.
+2. PURE EQUITY OPTIONS: widen the wing to 1-DELTA (SPY 30d/1d credit
+   spread). The 1d wing is a ~2.3-sigma lottery ticket costing almost
+   nothing but satisfying Reg-T pairing: 3x +10.5%/Sharpe 1.55/Calmar 1.28
+   (halves 1.43/1.14) - EQUAL to naked at 3x; 5x +16.5%/1.46/1.19 vs naked
+   1.54/1.31. Reg-T margin 27-44% of equity (width ~9.8%). Caveat: in
+   high-vol months the BS 1d strike may sit beyond the listed chain - take
+   the furthest listed strike; real 1d index calls are also cheaper than
+   the flat-IV model (conservative). Bot config updated: short_leg =
+   es_span | spy_naked | spy_regt; hedge via MES (tastytrade carries CME
+   micros - earlier note saying otherwise corrected).
