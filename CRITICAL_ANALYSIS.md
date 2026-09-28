@@ -286,3 +286,34 @@ no margin dependency (Saxo-compatible); L=3-5 needs IBKR portfolio margin
 (short call notional 135-225% of capital). 5x: +12.0%/yr, Sharpe 1.00,
 worst months Oct08 -9.9%, Mar20 -7.6%; losing years 2008 -13.1, 2022 -19.5,
 2018 -6.4. Practical from ~$100k (1-2 contracts/name); ~60 tickets/month.
+
+### Delta grid + cyclical SPY-only hedging of the retail liquid-30 sleeve
+
+Daily-mark simulation, monthly cohorts 2007-2026: singles held to expiry
+(never hedged individually); the BOOK's net delta (entry IVs, remaining T)
+re-hedged with SPY at none/weekly/daily frequency, 1bp per unit turnover.
+1x net-retail results: matched-delta pairs all improve with a WEEKLY hedge
+(L20/S20: +2.57%/Sharpe 1.04/Calmar 0.56 vs 0.95/0.47 unhedged; L30/S30:
+0.83 vs 0.76; L40/S40 0.54 - lower delta better throughout); daily hedging
+adds cost, not Sharpe (turnover 0.6-0.8x/mo vs 0.3-0.4x weekly, ~equal
+stats). Short SPY ATM leg is strongly negative in every hedge mode (-0.5 to
+-3.6%/yr; ATM vega/gamma mismatch vs OTM singles) - matched strikes stay
+mandatory. Hedge turnover at weekly is ~0.3x book notional/mo: ~1 SPY (or
+MES) trade/week, retail-free.
+
+RETAIL 50/50 with weekly-hedged L20/S20 sleeve (capin 0.81%/mo per 1x):
+| L | ann | vol | Sharpe | Sortino | maxDD | Calmar | worst mo |
+|---|---|---|---|---|---|---|---|
+| 3x | +10.3% | 9.5% | 1.09 | 1.73 | -26.2% | 0.39 | -8.9% |
+| 5x | +12.9% | 11.2% | 1.15 | 2.12 | -24.9% | 0.52 | -9.4% |
+| 8x | +16.9% | 14.3% | 1.18 | 2.61 | -25.4% | 0.66 | -10.0% |
+(L30/S30 weekly: 5x Sharpe 1.08 - 20-delta wins once the SPY hedge absorbs
+the gap risk.) 5x losing years 2008 -14.9, 2022 -15.6, 2018 -2.4; worst
+months Oct08 -9.4%, Jun22/Sep22 -5.4%. Beats the unhedged retail product
+(Sharpe 1.00) and matches the GS unhedged reference (1.08) - the weekly
+SPY hedge buys back the institutional edge at ~zero retail cost. 20-delta
+spread sensitivity is small (premiums tiny: h 5->8% costs ~0.04%/yr per 1x).
+Updated retail spec: long 1M 20d calls top-30 liquid names, short SPY 1M
+20d calls notional-matched, weekly net-delta re-hedge with SPY/MES,
+monthly reset; L=5 recommended, L=8 for the aggressive version (PM margin:
+short calls 225%/360% of capital).
