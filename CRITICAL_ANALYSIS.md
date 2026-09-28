@@ -440,3 +440,24 @@ Practical: $150k min (trimmed ~20-name book at 5-6x), $250-300k proper.
 Professional client status NOT required (IBKR PM + options permissions are
 retail); it only becomes relevant for EU retail wanting SPY ETF SHARES
 (PRIIPs) in the 50/50 variants - the final product holds none.
+
+### $100k version: monthly-rotating half-book solves granularity
+
+Sub-book tests (same structure/costs, 1x Sharpe/Calmar): top-15 liquid
+1.10/0.88; cheapest-15 shares 1.25/0.63 (price selection bias, 2nd half
+Calmar 0.64 - reject); cheapest-20 1.27/1.00; ROTATING 15-name half of the
+top-30 (odd/even liquidity ranks alternate monthly) 1.32/0.91 - rotation
+recovers cross-sectional breadth through time (successive cohorts overlap
+2 weeks, so ~30 distinct names are always on the book across two cohorts).
+
+Fully implementable $100k spec at 5x (per-name target $30k notional, any
+name whose single contract exceeds 2x target that month is skipped -
+era-scaled threshold; avg 13.3 names held, 1.7 dropped/mo, catches
+pre-split AMZN/GOOG/LLY-type prices): ann +19.6%, vol 13.6%, Sharpe 1.44,
+Sortino 3.47, maxDD -17.5%, Calmar 1.12 (halves 1.63/1.02), worst month
+-7.0%, 2008 +13.5%, losing years only 2011 -4.5 and 2022 -7.6. Vs the
+full30 book (needs ~$276k): Sharpe 1.54, Calmar 1.31 - the $100k rotation
+version gives up ~0.1 Sharpe and ~0.2 Calmar, keeps the defensive profile.
+SPY legs unaffected ($77k/contract: 5-6 short calls; hedge in SPY shares).
+Note: stays above the $100k PM revocation line only barely - fund $110-120k
+and size the sleeve off $100k to keep the buffer.
