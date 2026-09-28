@@ -317,3 +317,39 @@ Updated retail spec: long 1M 20d calls top-30 liquid names, short SPY 1M
 20d calls notional-matched, weekly net-delta re-hedge with SPY/MES,
 monthly reset; L=5 recommended, L=8 for the aggressive version (PM margin:
 short calls 225%/360% of capital).
+
+### Single-equity-side hedging (CFD delta hedge / call spreads) - Calmar 0.8 target
+
+1x sleeve variants, net retail (CFD: 2bp/turn + 1%/yr financing on hedge
+notional; option legs at liquid-name spreads incl. 8-10% on far-OTM wings):
+| variant | ann | Sharpe | maxDD | Calmar |
+|---|---|---|---|---|
+| base L20/S20, wk SPY hedge | +2.57% | 1.04 | -4.6% | 0.56 |
+| + singles CFD hedge weekly | +1.99% | 1.17 | -3.3% | 0.61 |
+| + singles CFD hedge DAILY | +2.20% | 1.18 | -2.8% | 0.80 |
+| spread L20-5/S20, wk SPY hedge | +2.84% | 1.35 | -3.7% | 0.77 |
+| spread L30-10/S30, wk SPY hedge | +3.13% | 1.36 | -2.9% | 1.07 |
+| spread ATM-10/SATM | +2.14% | 0.65 | -8.3% | 0.26 |
+| defined-risk credit spreads both sides | <=+1.4% | <=0.76 | - | <=0.33 |
+
+Selling the far-OTM wing per name (30-10 call spread) is the best structure:
+keeps the dispersion core, sells back blowout upside that was overpaid for.
+Defined-risk both-sides (SPY credit spread) destroys the short-leg edge -
+rejected. ATM long leg again rejected. Caveat: wings priced at flat IV
+(no smile); single-name 10d calls usually trade ABOVE ATM IV, so selling
+them should collect more than modeled (conservative direction).
+
+50/50 PORTFOLIOS reaching Calmar ~0.8 (retail, 2007-2026):
+| construction | ann | vol | Sharpe | Sortino | maxDD | Calmar | beta |
+|---|---|---|---|---|---|---|---|
+| L20/S20 + daily CFD hedge, 10x | +17.7% | 14.0% | 1.26 | 2.24 | -21.8% | 0.81 | 0.72 |
+| spread L20-5/S20 wk-hedge, 12x | +24.2% | 17.8% | 1.36 | 3.03 | -29.2% | 0.83 | 0.92 |
+| spread L30-10/S30 wk-hedge, 12x | +26.0% | 18.8% | 1.38 | 2.50 | -32.3% | 0.80 | 0.94 |
+
+Route 1 (fully hedged) is the defensive Calmar-0.8: smallest DD, 2008 NOT a
+losing year (only 2018 -6.0, 2022 -12.9; worst mo Oct08 -11.5%); needs daily
+per-name CFD rebalancing (~30 tickets/day automated, short CFD notional
+~200% of capital at 10x). Route 2/3 (options-only spreads) hit Calmar 0.8
+via return, not DD control: no CFD ops, 4 option legs/name, Sortino 3.0,
+but beta ~0.9 and worst month -13 to -17%. All need portfolio margin; model
+error scales with L as before.
