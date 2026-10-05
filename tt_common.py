@@ -58,11 +58,23 @@ def describe_credentials(c: dict) -> list[str]:
         out.append(f"client secret  : present ({len(sec)} chars)")
     if not ref:
         out.append("refresh token  : MISSING (set TT_REFRESH)  ← this is what blocks login")
-    elif ref.count(".") == 2:
+    elif ref == sec:
+        out.append("refresh token  : WRONG VALUE — TT_REFRESH is identical to the client secret. "
+                   "The refresh token comes from 'Create Grant', not from 'Regenerate Secret'  ← this blocks login")
+    elif re.fullmatch(r"[0-9a-f]{40}", ref):
+        out.append("refresh token  : WRONG VALUE — 40-char hex is a client secret, not a refresh token "
+                   "(a refresh token is a JWT: 'eyJ…', two dots, several hundred chars)  ← this blocks login")
+    elif ref.count(".") == 2 and ref.startswith("eyJ"):
         out.append("refresh token  : present, JWT format ✔")
     else:
         out.append(f"refresh token  : present ({len(ref)} chars) but not JWT-shaped — check it")
     return out
+
+
+def refresh_token_usable(c: dict) -> bool:
+    """True only when TT_REFRESH is present and is not obviously the client secret."""
+    ref, sec = c["refresh_token"], c["client_secret"]
+    return bool(ref) and ref != sec and not re.fullmatch(r"[0-9a-f]{40}", ref)
 
 
 def get_access_token(c: dict, sandbox: bool = False) -> tuple[str | None, str]:
@@ -89,7 +101,9 @@ HOW TO UNBLOCK (one-time, ~2 minutes, done by the account owner in a browser):
   3. Open the application whose Client ID matches TT_LOGIN
      (if none exists: "Create OAuth Application", scopes: read, trade, openid;
       then store the new Client Secret as TT_CLIENT_SECRET — it is shown once).
-  4. Click "Create Grant" → copy the refresh token (long JWT, never expires).
+  4. Click "Create Grant" (NOT "Regenerate Secret") → copy the refresh token.
+     It is a long JWT: starts with "eyJ", contains two dots, several hundred chars.
+     The 40-char hex string is the client secret and belongs in TT_PASSWORD only.
   5. Add it to this environment as  TT_REFRESH=<token>  and re-run:
         python3 preflight.py
 """)

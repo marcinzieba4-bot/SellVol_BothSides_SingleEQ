@@ -29,7 +29,8 @@ from decimal import Decimal
 
 import pandas as pd
 
-from tt_common import load_credentials, describe_credentials, print_refresh_token_instructions
+from tt_common import (load_credentials, describe_credentials, print_refresh_token_instructions,
+                       refresh_token_usable)
 
 TARGET_DTE = 30
 REGT_ATM   = 0.20
@@ -60,7 +61,7 @@ def mid(q):
 async def run(a) -> int:
 
     c = load_credentials()
-    if not c["refresh_token"]:
+    if not refresh_token_usable(c):
         print("\n".join(describe_credentials(c)))
         print_refresh_token_instructions()
         return 2

@@ -28,7 +28,7 @@ from datetime import date
 from decimal import Decimal
 
 from tt_common import (load_credentials, describe_credentials, get_access_token,
-                       print_refresh_token_instructions, die)
+                       print_refresh_token_instructions, refresh_token_usable, die)
 
 REPORT = "preflight_report.json"
 
@@ -52,11 +52,13 @@ async def run(args) -> int:
     print("\n── 0. Credentials ─────────────────────────────────────────────")
     for line in describe_credentials(c):
         print("  " + line)
-    if not c["refresh_token"]:
+    if not refresh_token_usable(c):
         print("\n  Legacy /sessions login with TT_LOGIN/TT_PASSWORD → 401 invalid_credentials")
         print("  (username/password sessions were decommissioned by tastytrade on 2026-02-11).")
         print_refresh_token_instructions()
-        report["checks"]["auth"] = {"passed": False, "detail": "TT_REFRESH missing"}
+        report["checks"]["auth"] = {"passed": False,
+                                   "detail": "TT_REFRESH missing" if not c["refresh_token"]
+                                   else "TT_REFRESH holds the client secret, not a refresh token"}
         json.dump(report, open(REPORT, "w"), indent=1)
         return 2
 

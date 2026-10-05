@@ -1,18 +1,18 @@
 # Pre-flight: trading the SellVol strategy at TastyTrade
 
-_Last run: 2026-10-05 08:46 UTC. Re-run with `python3 preflight.py` (deps: `pip install -r requirements.txt`)._
+_Last run: 2026-10-05 08:49 UTC. Re-run with `python3 preflight.py` (deps: `pip install -r requirements.txt`)._
 
-## 1. API access — BLOCKED on one missing value
+## 1. API access — BLOCKED on one wrong value
 
 | Item | Status |
 |---|---|
 | `TT_LOGIN` | is an OAuth **client id** (UUID), not a username |
 | `TT_PASSWORD` | is an OAuth **client secret** (40-char hex), not a password; regenerated 2026-10-05, still valid in shape |
-| `TT_REFRESH` (refresh token) | **missing** — nothing can log in without it; `/oauth/token` rejects `client_credentials` and `password` grants (`unsupported_grant_type`) |
+| `TT_REFRESH` (refresh token) | **wrong value** — it is identical to `TT_PASSWORD` (the client secret was pasted twice); `/oauth/token` answers `invalid_grant: Invalid JWT` on prod and sandbox. A real refresh token is a JWT (`eyJ…`, two dots, several hundred chars) from **Create Grant** |
 | Legacy `/sessions` login | returns `401 invalid_credentials`; tastytrade decommissioned username/password sessions on 2026-02-11 |
 | `api.tastyworks.com` reachability | OK from this environment |
 
-**Fix (account owner, ~2 min):** my.tastytrade.com → Manage → My Profile → API → OAuth Applications → open the app whose Client ID matches `TT_LOGIN` → **Create Grant** → copy the refresh token → save it as environment variable `TT_REFRESH`. Then `python3 preflight.py` runs the full check (account, options level, buying power, option chain, dry-run naked put) and `python3 feasibility_live.py` runs the market-hours check.
+**Fix (account owner, ~2 min):** my.tastytrade.com → Manage → My Profile → API → OAuth Applications → open the app whose Client ID matches `TT_LOGIN` → **Create Grant** (not "Regenerate Secret") → copy the long `eyJ…` refresh token → save it as environment variable `TT_REFRESH`; keep `TT_LOGIN` / `TT_PASSWORD` unchanged. Then `python3 preflight.py` runs the full check (account, options level, buying power, option chain, dry-run naked put) and `python3 feasibility_live.py` runs the market-hours check.
 
 ## 2. Offline feasibility — the sizing rule does not survive contact with contracts
 
