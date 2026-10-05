@@ -75,7 +75,8 @@ def main():
     print(f"  BP needed as % of capital  : median {bp_pct.median():.0f}%, p90 {bp_pct.quantile(.9):.0f}%, "
           f"p99 {bp_pct.quantile(.99):.0f}%, max {bp_pct.max():.0f}%  (>100% = NOT financeable)")
     print(f"  months where BP need > 100% of capital: {(bp_pct > 100).sum()}; > 50%: {(bp_pct > 50).sum()}")
-    print(f"  backtest avg premium 2022-24: {hist[hist.date >= '2022'].prem_pct.mean():.2f}% of spot per month (ATM, 30 DTE)")
+    traded = hist[(hist.date >= "2022") & (hist.prem_pct > 0)]   # skip months carry prem_pct=0
+    print(f"  backtest avg premium 2022-24 (traded months only): {traded.prem_pct.mean():.2f}% of spot per month (ATM, 30 DTE)")
     print(f"\nPer-name table → {a.out}")
     print(df.head(12).to_string())
 

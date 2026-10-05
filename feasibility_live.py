@@ -157,7 +157,7 @@ async def run(a) -> int:
 
     # backtest reference premiums
     hist = pd.read_csv("history.csv", parse_dates=["date"])
-    ref = hist[hist.date >= "2022"].groupby("ticker").prem_pct.mean()
+    ref = hist[(hist.date >= "2022") & (hist.prem_pct > 0)].groupby("ticker").prem_pct.mean()   # skip months carry prem_pct=0
 
     for t, sym in zip(tickers, symbols):
         m = meta.get(sym, {})

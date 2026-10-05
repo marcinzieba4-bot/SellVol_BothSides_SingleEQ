@@ -11,7 +11,7 @@ _Last run: 2026-10-05 08:55 UTC — **PASSED**, see `PREFLIGHT_RUN.md`. Re-run w
 | `TT_REFRESH` | refresh token (JWT from **Create Grant**) ✔ — token exchange returns 200 |
 | Account | Individual, **Margin**, options level **No Restrictions** → naked puts/calls allowed ✔ |
 | Margin type | Reg T; portfolio margin not enabled |
-| Funding | **net-liq $0, cash $0** — account is unfunded, nothing can be traded yet |
+| Funding | net-liq $0, cash $0, **$5,000 ACH pending** → $5,000 derivative BP (instant-deposit credit); too small for any ATM put on a name above ~$200/share |
 | Market data | equity quote, market metrics (IV30 / IV rank / liquidity), nested option chain, option quotes all OK |
 | Dry-run naked ATM put | works; AAPL: BP effect = **25.2 % of notional** (vs 20 % assumed below) |
 
@@ -32,7 +32,7 @@ Backtest unit: **1 unit = 1 % of capital in notional on each name**. The smalles
 
 - One contract on every name = **$2.98M notional**, ≈ **$0.6M Reg-T buying power** (20 % ATM rule; the live dry-run on AAPL measured **25 %**, so expect ≈ $0.75M). That is the real minimum "size 1" portfolio.
 - The recovery sizing in the backtest (`uniform_size` × 2) runs **above 1 in 54 of 119 months**, deploys **p90 2.7×, p99 7×, max 16× capital** in notional. Reg-T buying power need: p90 55 %, p99 139 %, **max 327 % of capital** → 3 months are not financeable at all, 14 months use more than half the account on margin alone. The Jan-2019 month (uniform_size 818 on 2 names) is a backtest artefact that no broker would allow.
-- Backtest premium assumption: **1.58 % of spot per month** (ATM, 30 DTE, 2022-24 mean). First live sample (AAPL, 33 DTE, Friday close, IV30 26.6): **3.2 %** put / 3.1 % call. The market-hours check will measure all 100 names; the backtest uses mid prices with no spread, commissions ($1/contract at tastytrade) or assignment costs.
+- Backtest premium: **2.90 % of spot per traded month** (ATM, 30 DTE, 2022-24 mean over months with a trade; the earlier 1.58 % figure averaged in skip months at 0 %). First live sample (AAPL, 33 DTE, Friday close, IV30 26.6): **3.2 %** put / 3.1 % call — consistent. The market-hours check will measure all 100 names; the backtest uses mid prices with no spread, commissions ($1/contract at tastytrade) or assignment costs.
 
 ## 3. What the market-hours check will measure (`feasibility_live.py`)
 
