@@ -1,4 +1,7 @@
 # Generated output files
 *.csv
+!feasibility_offline.csv
+!feasibility_live_*.csv
 __pycache__/
 *.pyc
+preflight_report.json
