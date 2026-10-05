@@ -38,12 +38,6 @@ def _d(x):
 
 
 async def run(args) -> int:
-    from tastytrade import Session, Account
-    from tastytrade.instruments import NestedOptionChain
-    from tastytrade.market_data import get_market_data_by_type
-    from tastytrade.market_sessions import get_market_sessions, ExchangeType
-    from tastytrade.metrics import get_market_metrics
-    from tastytrade.order import LimitOrder, Leg, OrderAction, InstrumentType, OrderTimeInForce
 
     report: dict = {"date": str(date.today()), "sandbox": args.sandbox, "checks": {}}
     ok = True
@@ -65,6 +59,15 @@ async def run(args) -> int:
         report["checks"]["auth"] = {"passed": False, "detail": "TT_REFRESH missing"}
         json.dump(report, open(REPORT, "w"), indent=1)
         return 2
+
+    # SDK import only once credentials are present, so the diagnosis above
+    # prints even when the tastytrade package is not installed.
+    from tastytrade import Session, Account
+    from tastytrade.instruments import NestedOptionChain
+    from tastytrade.market_data import get_market_data_by_type
+    from tastytrade.market_sessions import get_market_sessions, ExchangeType
+    from tastytrade.metrics import get_market_metrics
+    from tastytrade.order import LimitOrder, Leg, OrderAction, InstrumentType, OrderTimeInForce
 
     print("\n── 1. OAuth token exchange ────────────────────────────────────")
     token, msg = get_access_token(c, sandbox=args.sandbox)

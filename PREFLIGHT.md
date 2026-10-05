@@ -1,14 +1,14 @@
 # Pre-flight: trading the SellVol strategy at TastyTrade
 
-_Last run: 2026-10-05 04:30 ET (pre-market)._ Re-run with `python3 preflight.py`.
+_Last run: 2026-10-05 08:46 UTC. Re-run with `python3 preflight.py` (deps: `pip install -r requirements.txt`)._
 
 ## 1. API access — BLOCKED on one missing value
 
 | Item | Status |
 |---|---|
 | `TT_LOGIN` | is an OAuth **client id** (UUID), not a username |
-| `TT_PASSWORD` | is an OAuth **client secret** (40-char hex), not a password |
-| `TT_REFRESH` (refresh token) | **missing** — nothing can log in without it |
+| `TT_PASSWORD` | is an OAuth **client secret** (40-char hex), not a password; regenerated 2026-10-05, still valid in shape |
+| `TT_REFRESH` (refresh token) | **missing** — nothing can log in without it; `/oauth/token` rejects `client_credentials` and `password` grants (`unsupported_grant_type`) |
 | Legacy `/sessions` login | returns `401 invalid_credentials`; tastytrade decommissioned username/password sessions on 2026-02-11 |
 | `api.tastyworks.com` reachability | OK from this environment |
 

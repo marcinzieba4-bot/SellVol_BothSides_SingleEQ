@@ -58,18 +58,20 @@ def mid(q):
 
 
 async def run(a) -> int:
-    from tastytrade import Session, Account
-    from tastytrade.instruments import NestedOptionChain
-    from tastytrade.market_data import get_market_data_by_type
-    from tastytrade.market_sessions import get_market_sessions, ExchangeType
-    from tastytrade.metrics import get_market_metrics
-    from tastytrade.order import LimitOrder, Leg, OrderAction, InstrumentType, OrderTimeInForce
 
     c = load_credentials()
     if not c["refresh_token"]:
         print("\n".join(describe_credentials(c)))
         print_refresh_token_instructions()
         return 2
+
+    # SDK import only once credentials are present (see preflight.py).
+    from tastytrade import Session, Account
+    from tastytrade.instruments import NestedOptionChain
+    from tastytrade.market_data import get_market_data_by_type
+    from tastytrade.market_sessions import get_market_sessions, ExchangeType
+    from tastytrade.metrics import get_market_metrics
+    from tastytrade.order import LimitOrder, Leg, OrderAction, InstrumentType, OrderTimeInForce
 
     tickers = load_universe(a.universe)
     symbols = [tt_symbol(t) for t in tickers]
