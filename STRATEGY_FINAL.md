@@ -118,3 +118,16 @@ bull-market sample, and the single-name leg needs ~$500k before one contract per
 
 At $50k: SPY ≈ $580 → one spread ≈ $58k notional. 4× is 3–4 spreads in total, 1–2 per cohort. The single-name leg is
 not fundable at this size and adds nothing anyway.
+
+## 8. Live check at tastytrade, 2026-10-05 (market open) — what it changes
+
+Full numbers in `FEASIBILITY_LIVE.md` / `feasibility_live_2026-10-05.csv` (99 of 100 names, dry-run buying power on 98).
+
+- **Margin**: 30 % of notional per naked ATM put (35–60 % on the high-IV names), not the 25 % used in §2 and §4. The 50 % BP cap
+  therefore holds ≈ 1.7× notional, and the $50k Reg-T book in §5 shrinks to 8–12 cheap names.
+- **Spreads**: median 23 % of mid; only 13–15 names pass the ≤ 10 % filter in §4 rule 1. Half-spread ≈ 0.45 % of notional per month,
+  above the 0.3 % cost assumed in §1 — the base trade's post-cost expectancy is negative, not zero.
+- **Premium**: median 3.9 % of spot (1.38× the backtest's 3.0 %) on IV30 ≈ 33 before earnings; not an edge, do not size on it.
+- **SPY**: ATM 32-DTE put 1.40 % of spot, BP 19.9 %. The 5 %/12 % OTM put spread (732/680, 52 wide) quotes 2.15 credit =
+  0.28 % of spot gross; §7's +0.40 %/cohort net for the unhedged SPY book is optimistic by roughly a third — re-run `sim_spreads.py`
+  with a 0.28 % gross credit and the real skew before sizing. One such spread ($4,986 max loss) is all the current $5,000 BP holds.

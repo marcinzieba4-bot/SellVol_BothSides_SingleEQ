@@ -143,15 +143,28 @@ async def run(a) -> int:
                 if "put" not in m or n >= a.dry_run_limit:
                     continue
                 pm, _ = mid(quotes.get(m["put"]))
+                # tastytrade pre-flight rejects prices off the tick grid: $0.05 below $3, $0.10 above
+                # (penny-pilot names accept finer ticks, but these are valid everywhere)
+                tick = 0.05 if (pm or 1.0) < 3 else 0.10
+                px_ok = round(round((pm or 1.0) / tick) * tick, 2)
                 try:
-                    order = LimitOrder(time_in_force=OrderTimeInForce.DAY, price=Decimal(str(round(pm or 1.0, 2))),
+                    order = LimitOrder(time_in_force=OrderTimeInForce.DAY, price=Decimal(str(px_ok)),
                                        legs=[Leg(instrument_type=InstrumentType.EQUITY_OPTION, symbol=m["put"],
                                                  action=OrderAction.SELL_TO_OPEN, quantity=1)])
                     e = await acct.get_order_buying_power_effect(sess, order)
                     bp[sym] = {"bp_change": float(e.change_in_buying_power),
                                "isolated_margin": float(e.isolated_order_margin_requirement)}
                 except Exception as ex:
-                    bp[sym] = {"error": repr(ex)[:100]}
+                    # the SDK raises KeyError('data') on a 422 pre-flight rejection; fetch the real message
+                    msg = repr(ex)[:100]
+                    try:
+                        await sess.refresh()
+                        r = await sess._client.post(f"/accounts/{acct.account_number}/orders/dry-run",
+                                                    data=order.model_dump_json(exclude_none=True, by_alias=True))
+                        msg = f"HTTP {r.status_code}: {r.text[:140]}"
+                    except Exception:
+                        pass
+                    bp[sym] = {"error": msg}
                 n += 1
                 await asyncio.sleep(0.1)
 
