@@ -90,3 +90,31 @@ backtest, and portfolio margin only lets the multiplier run further before the c
 - Capping the martingale to anything financeable removes the return; not capping it is a margin call.
 - Portfolio margin halves margin per contract, it does not add edge. Apply for it only after the base trade is fixed.
 - A $50k Reg-T account can hold 10–15 cheap names at 1 contract; on the backtest's own data that subset lost money.
+
+## 7. Alternative tested: 30/10 single-name spreads + SPY 30/2 spread at 3–5×, rotating half-book, weekly share hedge
+
+`python3 sim_spreads.py` — weekly data 2015-02 → 2024-12, Black-Scholes strikes/premiums (single-name IV from the
+backtest's ATM premiums, SPY IV = VIX), 28-DTE cohorts entered every 2 weeks at half size, costs included, no
+integer-contract rounding.
+
+| Book | CAGR | Max DD | Worst 4 weeks | Feb–Apr 2020 | 2022 |
+|---|---|---|---|---|---|
+| A. single-name 30/10 put spreads, 1× notional | −0.7 % | −13.5 % | −4.3 % | −3.2 % | −6.1 % |
+| B. SPY 30/2 put spread, 3×, unhedged | **16.4 %** | −26.4 % | −17.5 % | −14.5 % | −20.4 % |
+| B. SPY 30/2 put spread, 5×, unhedged | 27.8 % | −41.2 % | −28.3 % | −24.3 % | −33.0 % |
+| C. SPY 3×, weekly share hedge | 3.4 % | −15.3 % | −8.4 % | −11.8 % | −3.9 % |
+| C. SPY 5×, weekly share hedge | 5.5 % | −24.8 % | −14.0 % | −19.4 % | −6.7 % |
+| A + B (SPY 4× unhedged) | 20.9 % | −38.7 % | −26.7 % | −22.6 % | −31.8 % |
+| A + C (SPY 4× hedged) | 3.7 % | −25.6 % | −12.5 % | −18.4 % | −11.1 % |
+
+Per 28-day cohort, % of notional: single-name spreads −0.05 % (53 % win); SPY unhedged +0.40 % (86 % win, worst −7.3 %);
+SPY hedged +0.09 % (74 % win, worst −5.4 %); entry delta of the SPY spread ≈ 0.28.
+
+Reading: the index carries a variance-risk premium, single names do not (same result as the ATM study in §1). The
+weekly share hedge gives up ~80 % of the SPY return to cut the worst drawdown by ~40 %; lowering leverage does the
+same job more cheaply (3× unhedged beats 5× hedged on both return and drawdown). Caveats: model premiums with a flat
+vol surface overstate the 30/2 credit (real 2-delta wings are skew-expensive, ≈ 0.1 % of notional), SPY 2015-24 is a
+bull-market sample, and the single-name leg needs ~$500k before one contract per name fits.
+
+At $50k: SPY ≈ $580 → one spread ≈ $58k notional. 4× is 3–4 spreads in total, 1–2 per cohort. The single-name leg is
+not fundable at this size and adds nothing anyway.

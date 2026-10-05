@@ -6,3 +6,4 @@ __pycache__/
 *.pyc
 preflight_report.json
 !sim_small_account.csv
+!sim_spreads.csv
