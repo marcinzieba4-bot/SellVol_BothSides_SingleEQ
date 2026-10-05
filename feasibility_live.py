@@ -94,7 +94,7 @@ async def run(a) -> int:
         print(f"Capital base ${capital:,.0f} → 1 unit = ${unit:,.0f} notional per name")
 
         ms = await get_market_sessions(sess, [ExchangeType.NYSE])
-        print(f"NYSE session: state={ms[0].state}  (quotes are only meaningful while Open)")
+        print(f"NYSE session: status={ms[0].status}  (quotes are only meaningful while Open)")
 
         # spot for all names (≤100 per call)
         spots: dict[str, float] = {}

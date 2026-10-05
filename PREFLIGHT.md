@@ -1,18 +1,22 @@
 # Pre-flight: trading the SellVol strategy at TastyTrade
 
-_Last run: 2026-10-05 08:49 UTC. Re-run with `python3 preflight.py` (deps: `pip install -r requirements.txt`)._
+_Last run: 2026-10-05 08:55 UTC — **PASSED**, see `PREFLIGHT_RUN.md`. Re-run with `python3 preflight.py` (deps: `pip install -r requirements.txt`)._
 
-## 1. API access — BLOCKED on one wrong value
+## 1. API access — OK (2026-10-05)
 
 | Item | Status |
 |---|---|
-| `TT_LOGIN` | is an OAuth **client id** (UUID), not a username |
-| `TT_PASSWORD` | is an OAuth **client secret** (40-char hex), not a password; regenerated 2026-10-05, still valid in shape |
-| `TT_REFRESH` (refresh token) | **wrong value** — it is identical to `TT_PASSWORD` (the client secret was pasted twice); `/oauth/token` answers `invalid_grant: Invalid JWT` on prod and sandbox. A real refresh token is a JWT (`eyJ…`, two dots, several hundred chars) from **Create Grant** |
-| Legacy `/sessions` login | returns `401 invalid_credentials`; tastytrade decommissioned username/password sessions on 2026-02-11 |
-| `api.tastyworks.com` reachability | OK from this environment |
+| `TT_LOGIN` | OAuth **client id** (UUID) ✔ |
+| `TT_PASSWORD` | OAuth **client secret** (40-char hex) ✔ |
+| `TT_REFRESH` | refresh token (JWT from **Create Grant**) ✔ — token exchange returns 200 |
+| Account | Individual, **Margin**, options level **No Restrictions** → naked puts/calls allowed ✔ |
+| Margin type | Reg T; portfolio margin not enabled |
+| Funding | **net-liq $0, cash $0** — account is unfunded, nothing can be traded yet |
+| Market data | equity quote, market metrics (IV30 / IV rank / liquidity), nested option chain, option quotes all OK |
+| Dry-run naked ATM put | works; AAPL: BP effect = **25.2 % of notional** (vs 20 % assumed below) |
 
-**Fix (account owner, ~2 min):** my.tastytrade.com → Manage → My Profile → API → OAuth Applications → open the app whose Client ID matches `TT_LOGIN` → **Create Grant** (not "Regenerate Secret") → copy the long `eyJ…` refresh token → save it as environment variable `TT_REFRESH`; keep `TT_LOGIN` / `TT_PASSWORD` unchanged. Then `python3 preflight.py` runs the full check (account, options level, buying power, option chain, dry-run naked put) and `python3 feasibility_live.py` runs the market-hours check.
+Full check: `python3 preflight.py` (account, options level, buying power, option chain, dry-run naked put).
+Market-hours check: `python3 feasibility_live.py` (NYSE 13:30–20:00 UTC).
 
 ## 2. Offline feasibility — the sizing rule does not survive contact with contracts
 
@@ -26,9 +30,9 @@ Backtest unit: **1 unit = 1 % of capital in notional on each name**. The smalles
 | $5M | 82 |
 | $11.4M | 99 (LLY at $1,143 is the binding name) |
 
-- One contract on every name = **$2.98M notional**, ≈ **$0.6M Reg-T buying power** (20 % ATM rule). That is the real minimum "size 1" portfolio.
+- One contract on every name = **$2.98M notional**, ≈ **$0.6M Reg-T buying power** (20 % ATM rule; the live dry-run on AAPL measured **25 %**, so expect ≈ $0.75M). That is the real minimum "size 1" portfolio.
 - The recovery sizing in the backtest (`uniform_size` × 2) runs **above 1 in 54 of 119 months**, deploys **p90 2.7×, p99 7×, max 16× capital** in notional. Reg-T buying power need: p90 55 %, p99 139 %, **max 327 % of capital** → 3 months are not financeable at all, 14 months use more than half the account on margin alone. The Jan-2019 month (uniform_size 818 on 2 names) is a backtest artefact that no broker would allow.
-- Backtest premium assumption: **1.58 % of spot per month** (ATM, 30 DTE, 2022-24 mean). Live check will measure this; the backtest uses mid prices with no spread, commissions ($1/contract at tastytrade) or assignment costs.
+- Backtest premium assumption: **1.58 % of spot per month** (ATM, 30 DTE, 2022-24 mean). First live sample (AAPL, 33 DTE, Friday close, IV30 26.6): **3.2 %** put / 3.1 % call. The market-hours check will measure all 100 names; the backtest uses mid prices with no spread, commissions ($1/contract at tastytrade) or assignment costs.
 
 ## 3. What the market-hours check will measure (`feasibility_live.py`)
 

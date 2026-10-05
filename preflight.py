@@ -120,7 +120,7 @@ async def run(args) -> int:
         try:
             ms = await get_market_sessions(sess, [ExchangeType.NYSE])
             st = ms[0]
-            check("market_sessions", True, f"NYSE state={st.state} open={st.open_at} close={st.close_at}")
+            check("market_sessions", True, f"NYSE status={st.status} open={st.open_at} close={st.close_at}")
         except Exception as e:
             check("market_sessions", False, repr(e)[:160])
 
